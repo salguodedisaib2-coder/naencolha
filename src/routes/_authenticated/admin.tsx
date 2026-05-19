@@ -34,7 +34,7 @@ function AdminPage() {
           <TabsTrigger value="profile">Meu Perfil</TabsTrigger>
           <TabsTrigger value="services">Serviços</TabsTrigger>
           <TabsTrigger value="photos">Fotos</TabsTrigger>
-          <TabsTrigger value="videos">Vídeos</TabsTrigger>
+          <TabsTrigger value="videos">Conteúdos</TabsTrigger>
           <TabsTrigger value="finance">Financeiro</TabsTrigger>
         </TabsList>
         <TabsContent value="profile"><ProfileTab userId={userId} /></TabsContent>
