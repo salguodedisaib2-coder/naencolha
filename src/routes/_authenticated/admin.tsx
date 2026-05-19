@@ -292,18 +292,17 @@ function VideosTab({ userId }: { userId: string }) {
     setAdding(false);
   };
 
-  const generateThumbnail = (file: File): Promise<Blob> => {
+  const generateThumbnail = (source: File | string): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const video = document.createElement("video");
       video.preload = "metadata";
       video.muted = true;
       video.playsInline = true;
       video.crossOrigin = "anonymous";
-      const url = URL.createObjectURL(file);
-      video.src = url;
-      const cleanup = () => URL.revokeObjectURL(url);
+      const objectUrl = typeof source === "string" ? null : URL.createObjectURL(source);
+      video.src = objectUrl ?? (source as string);
+      const cleanup = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
       video.onloadedmetadata = () => {
-        // Seek a bit in to avoid black first frame
         const seekTo = Math.min(1, (video.duration || 2) * 0.1);
         video.currentTime = seekTo;
       };
@@ -324,6 +323,33 @@ function VideosTab({ userId }: { userId: string }) {
       video.onerror = () => { cleanup(); reject(new Error("Erro ao ler o vídeo")); };
     });
   };
+
+  const generateThumbForExisting = async (v: any) => {
+    setEditUploading(true);
+    try {
+      // Extract storage path from public URL and get a signed URL (bucket may be private)
+      const marker = "/object/public/videos/";
+      const idx = v.video_url.indexOf(marker);
+      let fetchUrl = v.video_url;
+      if (idx !== -1) {
+        const path = v.video_url.slice(idx + marker.length);
+        const { data, error } = await supabase.storage.from("videos").createSignedUrl(path, 120);
+        if (error) throw error;
+        fetchUrl = data.signedUrl;
+      }
+      const blob = await generateThumbnail(fetchUrl);
+      const thumbFile = new File([blob], `auto-${Date.now()}.jpg`, { type: "image/jpeg" });
+      const thumbUrl = await uploadFile("thumbnails", userId, thumbFile);
+      setEditForm((f) => ({ ...f, thumbnail_url: thumbUrl }));
+      toast.success("Miniatura gerada do vídeo");
+    } catch (e: any) {
+      toast.error("Não foi possível gerar: " + e.message);
+    } finally {
+      setEditUploading(false);
+    }
+  };
+
+
 
   const handleFile = async (kind: "video" | "thumb", file: File) => {
     setUploading(true);
@@ -448,9 +474,12 @@ function VideosTab({ userId }: { userId: string }) {
                   <div className="w-32 h-20 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">sem miniatura</div>
                 )}
                 <label className="text-xs text-primary cursor-pointer hover:underline">
-                  {editUploading ? "Enviando..." : "Alterar miniatura"}
+                  {editUploading ? "Processando..." : "Enviar miniatura"}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleEditThumb(e.target.files[0])} />
                 </label>
+                <button type="button" disabled={editUploading} onClick={() => generateThumbForExisting(v)} className="text-xs text-muted-foreground hover:text-primary hover:underline disabled:opacity-50">
+                  Gerar do vídeo
+                </button>
               </div>
               <div className="flex-1 space-y-3">
                 <div><Label>Título</Label><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
