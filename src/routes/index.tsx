@@ -106,8 +106,8 @@ function HomePage() {
     <div className="min-h-screen">
       <header className="border-b border-border bg-card/40 backdrop-blur sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-2xl font-extrabold bg-gradient-primary bg-clip-text text-transparent">
-            NaEncolha
+          <Link to="/" aria-label="NaEncolha">
+            <Logo className="h-10 md:h-12 w-auto" />
           </Link>
           <Link
             to="/login"
