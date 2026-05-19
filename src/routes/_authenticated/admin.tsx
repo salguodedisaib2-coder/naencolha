@@ -284,16 +284,70 @@ function VideosTab({ userId }: { userId: string }) {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", price: "", video_url: "", thumbnail_url: "" });
   const [uploading, setUploading] = useState(false);
+  const [thumbManual, setThumbManual] = useState(false);
 
-  const reset = () => { setForm({ title: "", description: "", price: "", video_url: "", thumbnail_url: "" }); setAdding(false); };
+  const reset = () => {
+    setForm({ title: "", description: "", price: "", video_url: "", thumbnail_url: "" });
+    setThumbManual(false);
+    setAdding(false);
+  };
+
+  const generateThumbnail = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.muted = true;
+      video.playsInline = true;
+      video.crossOrigin = "anonymous";
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      const cleanup = () => URL.revokeObjectURL(url);
+      video.onloadedmetadata = () => {
+        // Seek a bit in to avoid black first frame
+        const seekTo = Math.min(1, (video.duration || 2) * 0.1);
+        video.currentTime = seekTo;
+      };
+      video.onseeked = () => {
+        const canvas = document.createElement("canvas");
+        const maxW = 640;
+        const ratio = video.videoWidth ? maxW / video.videoWidth : 1;
+        canvas.width = Math.round(video.videoWidth * ratio) || maxW;
+        canvas.height = Math.round(video.videoHeight * ratio) || 360;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { cleanup(); return reject(new Error("Canvas indisponível")); }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          cleanup();
+          if (blob) resolve(blob); else reject(new Error("Falha ao gerar miniatura"));
+        }, "image/jpeg", 0.85);
+      };
+      video.onerror = () => { cleanup(); reject(new Error("Erro ao ler o vídeo")); };
+    });
+  };
 
   const handleFile = async (kind: "video" | "thumb", file: File) => {
     setUploading(true);
     try {
-      const bucket = kind === "video" ? "videos" : "thumbnails";
-      const url = await uploadFile(bucket, userId, file);
-      setForm((f) => ({ ...f, [kind === "video" ? "video_url" : "thumbnail_url"]: url }));
-      toast.success("Arquivo enviado");
+      if (kind === "video") {
+        const url = await uploadFile("videos", userId, file);
+        let thumbUrl = "";
+        if (!thumbManual) {
+          try {
+            const blob = await generateThumbnail(file);
+            const thumbFile = new File([blob], `auto-${Date.now()}.jpg`, { type: "image/jpeg" });
+            thumbUrl = await uploadFile("thumbnails", userId, thumbFile);
+          } catch (err) {
+            console.warn("Auto-thumbnail falhou:", err);
+          }
+        }
+        setForm((f) => ({ ...f, video_url: url, thumbnail_url: thumbUrl || f.thumbnail_url }));
+        toast.success(thumbUrl ? "Vídeo enviado (miniatura gerada)" : "Vídeo enviado");
+      } else {
+        const url = await uploadFile("thumbnails", userId, file);
+        setForm((f) => ({ ...f, thumbnail_url: url }));
+        setThumbManual(true);
+        toast.success("Miniatura enviada");
+      }
     } catch (e: any) { toast.error(e.message); }
     finally { setUploading(false); }
   };
@@ -309,7 +363,7 @@ function VideosTab({ userId }: { userId: string }) {
         thumbnail_url: form.thumbnail_url || null,
       });
       if (error) throw error;
-      toast.success("Vídeo cadastrado");
+      toast.success("Conteúdo cadastrado");
       reset();
       qc.invalidateQueries({ queryKey: ["my-videos"] });
     } catch (e: any) { toast.error(e.message); }
@@ -320,7 +374,7 @@ function VideosTab({ userId }: { userId: string }) {
     qc.invalidateQueries({ queryKey: ["my-videos"] });
   };
   const del = async (id: string) => {
-    if (!confirm("Excluir vídeo?")) return;
+    if (!confirm("Excluir conteúdo?")) return;
     await supabase.from("videos").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["my-videos"] });
   };
@@ -328,17 +382,26 @@ function VideosTab({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       {!adding ? (
-        <Button onClick={() => setAdding(true)} className="bg-gradient-primary">+ Adicionar vídeo</Button>
+        <Button onClick={() => setAdding(true)} className="bg-gradient-primary">+ Adicionar conteúdo</Button>
       ) : (
         <div className="border border-border rounded-xl p-6 space-y-4 max-w-2xl">
-          <h3 className="font-semibold">Novo vídeo</h3>
+          <h3 className="font-semibold">Novo conteúdo</h3>
           <div><Label>Arquivo de vídeo</Label><Input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleFile("video", e.target.files[0])} />{form.video_url && <p className="text-xs text-primary mt-1">✓ Enviado</p>}</div>
-          <div><Label>Miniatura (opcional)</Label><Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile("thumb", e.target.files[0])} />{form.thumbnail_url && <p className="text-xs text-primary mt-1">✓ Enviada</p>}</div>
+          <div>
+            <Label>Miniatura (opcional — gerada automaticamente do vídeo se vazia)</Label>
+            <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile("thumb", e.target.files[0])} />
+            {form.thumbnail_url && (
+              <div className="mt-2 flex items-center gap-3">
+                <img src={form.thumbnail_url} alt="miniatura" className="w-24 h-16 object-cover rounded" />
+                <p className="text-xs text-primary">✓ {thumbManual ? "Enviada" : "Gerada automaticamente"}</p>
+              </div>
+            )}
+          </div>
           <div><Label>Título</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
           <div><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
           <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
           <div className="flex gap-2">
-            <Button onClick={save} disabled={uploading || !form.video_url || !form.title || !form.price} className="bg-gradient-primary">Salvar</Button>
+            <Button onClick={save} disabled={uploading || !form.video_url || !form.title || !form.price} className="bg-gradient-primary">{uploading ? "Enviando..." : "Salvar"}</Button>
             <Button variant="ghost" onClick={reset}>Cancelar</Button>
           </div>
         </div>
