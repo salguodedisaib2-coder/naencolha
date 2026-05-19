@@ -340,7 +340,7 @@ function VideosTab({ userId }: { userId: string }) {
         if (error) throw error;
         fetchUrl = data.signedUrl;
       }
-      const blob = await generateThumbnail(fetchUrl);
+      const blob = await generateThumbnail(fetchUrl, true);
       const thumbFile = new File([blob], `auto-${Date.now()}.jpg`, { type: "image/jpeg" });
       const thumbUrl = await uploadFile("thumbnails", userId, thumbFile);
       setEditForm((f) => ({ ...f, thumbnail_url: thumbUrl }));
