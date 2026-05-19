@@ -292,6 +292,32 @@ function VideosTab({ userId }: { userId: string }) {
     setAdding(false);
   };
 
+  const extractBucketPath = (fileUrl: string, bucket: string) => {
+    const directMarker = `/storage/v1/object/public/${bucket}/`;
+    const signedMarker = `/storage/v1/object/sign/${bucket}/`;
+
+    if (fileUrl.includes(directMarker)) {
+      return fileUrl.split(directMarker)[1]?.split("?")[0] ?? "";
+    }
+
+    if (fileUrl.includes(signedMarker)) {
+      return fileUrl.split(signedMarker)[1]?.split("?")[0] ?? "";
+    }
+
+    return "";
+  };
+
+  const persistThumbnail = async (videoId: string, thumbnailUrl: string) => {
+    const { error } = await supabase
+      .from("videos")
+      .update({ thumbnail_url: thumbnailUrl })
+      .eq("id", videoId)
+      .eq("creator_id", userId);
+
+    if (error) throw error;
+    qc.invalidateQueries({ queryKey: ["my-videos"] });
+  };
+
   const generateThumbnail = (source: File | string, randomize = false): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const video = document.createElement("video");
@@ -301,50 +327,79 @@ function VideosTab({ userId }: { userId: string }) {
       video.crossOrigin = "anonymous";
       const objectUrl = typeof source === "string" ? null : URL.createObjectURL(source);
       video.src = objectUrl ?? (source as string);
-      const cleanup = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
-      video.onloadedmetadata = () => {
-        const dur = video.duration || 2;
-        const seekTo = randomize
-          ? Math.max(0.1, Math.min(Math.max(dur - 0.1, 0.1), dur * (0.05 + Math.random() * 0.9)))
-          : Math.min(1, dur * 0.1);
-        video.currentTime = seekTo;
+      let finished = false;
+      const timeout = window.setTimeout(() => {
+        if (!finished) fail("Tempo esgotado ao gerar miniatura");
+      }, 15000);
+
+      const cleanup = () => {
+        window.clearTimeout(timeout);
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
       };
-      video.onseeked = () => {
+
+      const fail = (message: string) => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        reject(new Error(message));
+      };
+
+      const captureFrame = () => {
+        if (finished) return;
         const canvas = document.createElement("canvas");
         const maxW = 640;
         const ratio = video.videoWidth ? maxW / video.videoWidth : 1;
         canvas.width = Math.round(video.videoWidth * ratio) || maxW;
         canvas.height = Math.round(video.videoHeight * ratio) || 360;
         const ctx = canvas.getContext("2d");
-        if (!ctx) { cleanup(); return reject(new Error("Canvas indisponível")); }
+        if (!ctx) return fail("Canvas indisponível");
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         canvas.toBlob((blob) => {
+          if (finished) return;
+          finished = true;
           cleanup();
           if (blob) resolve(blob); else reject(new Error("Falha ao gerar miniatura"));
         }, "image/jpeg", 0.85);
       };
-      video.onerror = () => { cleanup(); reject(new Error("Erro ao ler o vídeo")); };
+
+      video.onloadeddata = () => {
+        const dur = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+        if (dur <= 0.2) {
+          captureFrame();
+          return;
+        }
+
+        const seekTo = randomize
+          ? Math.max(0.1, Math.min(dur - 0.1, dur * (0.05 + Math.random() * 0.9)))
+          : Math.min(1, Math.max(0.1, dur * 0.1));
+
+        video.currentTime = seekTo;
+      };
+
+      video.onseeked = captureFrame;
+      video.onerror = () => fail("Erro ao ler o vídeo");
+      video.load();
     });
   };
 
   const generateThumbForExisting = async (v: any) => {
     setEditUploading(true);
     try {
-      // Extract storage path from public URL and get a signed URL (bucket may be private)
-      const marker = "/object/public/videos/";
-      const idx = v.video_url.indexOf(marker);
+      const path = extractBucketPath(v.video_url, "videos");
       let fetchUrl = v.video_url;
-      if (idx !== -1) {
-        const path = v.video_url.slice(idx + marker.length);
+
+      if (path) {
         const { data, error } = await supabase.storage.from("videos").createSignedUrl(path, 120);
         if (error) throw error;
         fetchUrl = data.signedUrl;
       }
+
       const blob = await generateThumbnail(fetchUrl, true);
       const thumbFile = new File([blob], `auto-${Date.now()}.jpg`, { type: "image/jpeg" });
       const thumbUrl = await uploadFile("thumbnails", userId, thumbFile);
+      await persistThumbnail(v.id, thumbUrl);
       setEditForm((f) => ({ ...f, thumbnail_url: thumbUrl }));
-      toast.success("Miniatura gerada do vídeo");
+      toast.success("Miniatura gerada e salva");
     } catch (e: any) {
       toast.error("Não foi possível gerar: " + e.message);
     } finally {
@@ -420,8 +475,11 @@ function VideosTab({ userId }: { userId: string }) {
     setEditUploading(true);
     try {
       const url = await uploadFile("thumbnails", userId, file);
+      if (editingId) {
+        await persistThumbnail(editingId, url);
+      }
       setEditForm((f) => ({ ...f, thumbnail_url: url }));
-      toast.success("Miniatura enviada");
+      toast.success("Miniatura enviada e salva");
     } catch (e: any) { toast.error(e.message); }
     finally { setEditUploading(false); }
   };
