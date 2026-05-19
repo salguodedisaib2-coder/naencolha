@@ -474,9 +474,12 @@ function VideosTab({ userId }: { userId: string }) {
                   <div className="w-32 h-20 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">sem miniatura</div>
                 )}
                 <label className="text-xs text-primary cursor-pointer hover:underline">
-                  {editUploading ? "Enviando..." : "Alterar miniatura"}
+                  {editUploading ? "Processando..." : "Enviar miniatura"}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleEditThumb(e.target.files[0])} />
                 </label>
+                <button type="button" disabled={editUploading} onClick={() => generateThumbForExisting(v)} className="text-xs text-muted-foreground hover:text-primary hover:underline disabled:opacity-50">
+                  Gerar do vídeo
+                </button>
               </div>
               <div className="flex-1 space-y-3">
                 <div><Label>Título</Label><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
