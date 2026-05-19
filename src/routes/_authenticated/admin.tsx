@@ -292,7 +292,7 @@ function VideosTab({ userId }: { userId: string }) {
     setAdding(false);
   };
 
-  const generateThumbnail = (source: File | string): Promise<Blob> => {
+  const generateThumbnail = (source: File | string, randomize = false): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const video = document.createElement("video");
       video.preload = "metadata";
@@ -303,7 +303,10 @@ function VideosTab({ userId }: { userId: string }) {
       video.src = objectUrl ?? (source as string);
       const cleanup = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
       video.onloadedmetadata = () => {
-        const seekTo = Math.min(1, (video.duration || 2) * 0.1);
+        const dur = video.duration || 2;
+        const seekTo = randomize
+          ? Math.max(0.1, Math.min(Math.max(dur - 0.1, 0.1), dur * (0.05 + Math.random() * 0.9)))
+          : Math.min(1, dur * 0.1);
         video.currentTime = seekTo;
       };
       video.onseeked = () => {
@@ -337,7 +340,7 @@ function VideosTab({ userId }: { userId: string }) {
         if (error) throw error;
         fetchUrl = data.signedUrl;
       }
-      const blob = await generateThumbnail(fetchUrl);
+      const blob = await generateThumbnail(fetchUrl, true);
       const thumbFile = new File([blob], `auto-${Date.now()}.jpg`, { type: "image/jpeg" });
       const thumbUrl = await uploadFile("thumbnails", userId, thumbFile);
       setEditForm((f) => ({ ...f, thumbnail_url: thumbUrl }));
