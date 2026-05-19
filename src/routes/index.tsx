@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CreatorCard } from "@/components/CreatorCard";
+import { Logo } from "@/components/Logo";
 import { ServiceChip } from "@/components/ServiceChip";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
