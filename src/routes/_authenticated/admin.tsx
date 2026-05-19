@@ -380,11 +380,21 @@ function VideosTab({ userId }: { userId: string }) {
   };
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", description: "", price: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", price: "", thumbnail_url: "" });
+  const [editUploading, setEditUploading] = useState(false);
 
   const startEdit = (v: any) => {
     setEditingId(v.id);
-    setEditForm({ title: v.title ?? "", description: v.description ?? "", price: String(v.price_brl ?? "") });
+    setEditForm({ title: v.title ?? "", description: v.description ?? "", price: String(v.price_brl ?? ""), thumbnail_url: v.thumbnail_url ?? "" });
+  };
+  const handleEditThumb = async (file: File) => {
+    setEditUploading(true);
+    try {
+      const url = await uploadFile("thumbnails", userId, file);
+      setEditForm((f) => ({ ...f, thumbnail_url: url }));
+      toast.success("Miniatura enviada");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setEditUploading(false); }
   };
   const saveEdit = async () => {
     if (!editingId) return;
@@ -392,6 +402,7 @@ function VideosTab({ userId }: { userId: string }) {
       title: editForm.title,
       description: editForm.description,
       price_brl: Number(editForm.price),
+      thumbnail_url: editForm.thumbnail_url || null,
     }).eq("id", editingId);
     if (error) { toast.error(error.message); return; }
     toast.success("Conteúdo atualizado");
@@ -430,18 +441,29 @@ function VideosTab({ userId }: { userId: string }) {
         {videos?.map((v) => editingId === v.id ? (
           <div key={v.id} className="border border-primary rounded-xl p-4 space-y-3">
             <div className="flex items-start gap-4">
-              {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-24 h-16 object-cover rounded" />}
+              <div className="flex flex-col items-center gap-2">
+                {editForm.thumbnail_url ? (
+                  <img src={editForm.thumbnail_url} alt="" className="w-32 h-20 object-cover rounded" />
+                ) : (
+                  <div className="w-32 h-20 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">sem miniatura</div>
+                )}
+                <label className="text-xs text-primary cursor-pointer hover:underline">
+                  {editUploading ? "Enviando..." : "Alterar miniatura"}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleEditThumb(e.target.files[0])} />
+                </label>
+              </div>
               <div className="flex-1 space-y-3">
                 <div><Label>Título</Label><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
                 <div><Label>Descrição</Label><Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
                 <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></div>
                 <div className="flex gap-2">
-                  <Button onClick={saveEdit} className="bg-gradient-primary">Salvar</Button>
+                  <Button onClick={saveEdit} disabled={editUploading} className="bg-gradient-primary">Salvar</Button>
                   <Button variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
                 </div>
               </div>
             </div>
           </div>
+
         ) : (
           <div key={v.id} className="flex items-center gap-4 p-4 border border-border rounded-xl hover:border-primary transition-colors cursor-pointer" onClick={() => startEdit(v)}>
             {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-24 h-16 object-cover rounded" />}
