@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ServiceChip } from "@/components/ServiceChip";
+import { Logo } from "@/components/Logo";
 import { VideoCard } from "@/components/VideoCard";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { Button } from "@/components/ui/button";
@@ -121,8 +122,8 @@ function ProfilePage() {
     <div className="min-h-screen pb-20">
       <header className="border-b border-border bg-card/40 backdrop-blur sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-2xl font-extrabold bg-gradient-primary bg-clip-text text-transparent">
-            NaEncolha
+          <Link to="/" aria-label="NaEncolha">
+            <Logo className="h-10 md:h-12 w-auto" />
           </Link>
         </div>
       </header>
