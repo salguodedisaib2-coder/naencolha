@@ -379,6 +379,26 @@ function VideosTab({ userId }: { userId: string }) {
     qc.invalidateQueries({ queryKey: ["my-videos"] });
   };
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", description: "", price: "" });
+
+  const startEdit = (v: any) => {
+    setEditingId(v.id);
+    setEditForm({ title: v.title ?? "", description: v.description ?? "", price: String(v.price_brl ?? "") });
+  };
+  const saveEdit = async () => {
+    if (!editingId) return;
+    const { error } = await supabase.from("videos").update({
+      title: editForm.title,
+      description: editForm.description,
+      price_brl: Number(editForm.price),
+    }).eq("id", editingId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Conteúdo atualizado");
+    setEditingId(null);
+    qc.invalidateQueries({ queryKey: ["my-videos"] });
+  };
+
   return (
     <div className="space-y-6">
       {!adding ? (
@@ -407,15 +427,33 @@ function VideosTab({ userId }: { userId: string }) {
         </div>
       )}
       <div className="grid gap-4">
-        {videos?.map((v) => (
-          <div key={v.id} className="flex items-center gap-4 p-4 border border-border rounded-xl">
+        {videos?.map((v) => editingId === v.id ? (
+          <div key={v.id} className="border border-primary rounded-xl p-4 space-y-3">
+            <div className="flex items-start gap-4">
+              {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-24 h-16 object-cover rounded" />}
+              <div className="flex-1 space-y-3">
+                <div><Label>Título</Label><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
+                <div><Label>Descrição</Label><Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
+                <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></div>
+                <div className="flex gap-2">
+                  <Button onClick={saveEdit} className="bg-gradient-primary">Salvar</Button>
+                  <Button variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div key={v.id} className="flex items-center gap-4 p-4 border border-border rounded-xl hover:border-primary transition-colors cursor-pointer" onClick={() => startEdit(v)}>
             {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-24 h-16 object-cover rounded" />}
             <div className="flex-1 min-w-0">
               <p className="font-semibold truncate">{v.title}</p>
-              <p className="text-sm text-muted-foreground">{formatBRL(Number(v.price_brl))} · {v.purchase_count} vendas</p>
+              <p className="text-sm text-muted-foreground line-clamp-1">{v.description || "Sem descrição — clique para editar"}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatBRL(Number(v.price_brl))} · {v.purchase_count} vendas</p>
             </div>
-            <Switch checked={v.is_active} onCheckedChange={(c) => toggleActive(v.id, c)} />
-            <Button variant="ghost" size="icon" onClick={() => del(v.id)}><Trash2 className="w-4 h-4" /></Button>
+            <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
+              <Switch checked={v.is_active} onCheckedChange={(c) => toggleActive(v.id, c)} />
+              <Button variant="ghost" size="icon" onClick={() => del(v.id)}><Trash2 className="w-4 h-4" /></Button>
+            </div>
           </div>
         ))}
       </div>
