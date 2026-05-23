@@ -345,6 +345,8 @@ function ProfilePage() {
                     isFree={!!v.is_free}
                     resolution={v.resolution}
                     durationSeconds={v.duration_seconds}
+                    contentType={v.content_type}
+                    photoCount={v.photo_count}
                     onBuy={() => handleBuy(v)}
                   />
                 ))}
