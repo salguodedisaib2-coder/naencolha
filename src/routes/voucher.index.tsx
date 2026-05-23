@@ -6,7 +6,7 @@ import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import { Ticket } from "lucide-react";
 
-export const Route = createFileRoute("/voucher")({
+export const Route = createFileRoute("/voucher/")({
   head: () => ({
     meta: [
       { title: "Acessar voucher — NaEncolha" },
