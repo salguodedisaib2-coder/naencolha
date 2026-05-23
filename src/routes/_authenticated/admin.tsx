@@ -430,11 +430,25 @@ function VideosTab({ userId }: { userId: string }) {
 
 
 
+  const readVideoDuration = (file: File): Promise<number> => new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.src = url;
+    const done = (d: number) => { URL.revokeObjectURL(url); resolve(d); };
+    v.onloadedmetadata = () => done(Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0);
+    v.onerror = () => done(0);
+    setTimeout(() => done(0), 8000);
+  });
+
   const handleFile = async (kind: "video" | "thumb", file: File) => {
     setUploading(true);
     try {
       if (kind === "video") {
-        const url = await uploadFile("videos", userId, file);
+        const [url, dur] = await Promise.all([
+          uploadFile("videos", userId, file),
+          readVideoDuration(file),
+        ]);
         let thumbUrl = "";
         if (!thumbManual) {
           try {
@@ -445,7 +459,7 @@ function VideosTab({ userId }: { userId: string }) {
             console.warn("Auto-thumbnail falhou:", err);
           }
         }
-        setForm((f) => ({ ...f, video_url: url, thumbnail_url: thumbUrl || f.thumbnail_url }));
+        setForm((f) => ({ ...f, video_url: url, thumbnail_url: thumbUrl || f.thumbnail_url, duration_seconds: Math.round(dur) }));
         toast.success(thumbUrl ? "Vídeo enviado (miniatura gerada)" : "Vídeo enviado");
       } else {
         const url = await uploadFile("thumbnails", userId, file);
@@ -463,9 +477,12 @@ function VideosTab({ userId }: { userId: string }) {
         creator_id: userId,
         title: form.title,
         description: form.description,
-        price_brl: Number(form.price),
+        price_brl: form.is_free ? 0 : Number(form.price),
         video_url: form.video_url,
         thumbnail_url: form.thumbnail_url || null,
+        is_free: form.is_free,
+        resolution: form.resolution || null,
+        duration_seconds: form.duration_seconds || null,
       });
       if (error) throw error;
       toast.success("Conteúdo cadastrado");
