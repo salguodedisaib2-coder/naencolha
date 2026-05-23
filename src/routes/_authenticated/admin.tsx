@@ -274,7 +274,13 @@ function PhotosTab({ userId }: { userId: string }) {
   };
 
   const del = async (id: string) => {
-    await supabase.from("free_photos").delete().eq("id", id);
+    if (!confirm("Remover esta foto? Esta ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("free_photos").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Foto removida");
     qc.invalidateQueries({ queryKey: ["my-photos"] });
   };
 
@@ -287,13 +293,23 @@ function PhotosTab({ userId }: { userId: string }) {
       </label>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {photos?.map((p) => (
-          <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden group">
+          <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden border border-border">
             <img src={p.photo_url} alt="" className="w-full h-full object-cover" />
-            <button onClick={() => del(p.id)} className="absolute top-2 right-2 p-1.5 rounded-full bg-destructive opacity-0 group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => del(p.id)}
+              aria-label="Remover foto"
+              className="absolute top-2 right-2 p-2 rounded-full bg-destructive text-destructive-foreground shadow-lg hover:bg-destructive/90"
+            >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
         ))}
+        {photos?.length === 0 && (
+          <p className="col-span-full text-sm text-muted-foreground text-center py-6">
+            Nenhuma foto enviada ainda.
+          </p>
+        )}
       </div>
     </div>
   );
