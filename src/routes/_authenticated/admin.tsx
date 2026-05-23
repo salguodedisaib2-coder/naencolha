@@ -12,6 +12,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { deleteMyAccount } from "@/lib/account.functions";
+import { useNavigate } from "@tanstack/react-router";
 import { ServiceChip } from "@/components/ServiceChip";
 import { CATEGORY_LABELS, CATEGORY_ORDER, formatBRL, type ServiceCategory } from "@/lib/categories";
 import { createVoucher, revokeVoucher, listVouchersForVideo, listAllVouchers, getVoucherStats, setVideoFeatured } from "@/lib/vouchers.functions";
@@ -177,6 +190,90 @@ function ProfileTab({ userId }: { userId: string }) {
       <Button onClick={save} disabled={saving} className="bg-gradient-primary">
         {saving ? "Salvando..." : "Salvar alterações"}
       </Button>
+
+      <DangerZone />
+    </div>
+  );
+}
+
+function DangerZone() {
+  const navigate = useNavigate();
+  const deleteFn = useServerFn(deleteMyAccount);
+  const [confirmText, setConfirmText] = useState("");
+  const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteFn({});
+      await supabase.auth.signOut();
+      toast.success("Conta excluída permanentemente");
+      navigate({ to: "/" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao excluir conta");
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="mt-12 border-2 border-destructive/40 rounded-xl p-6 bg-destructive/5">
+      <h3 className="text-xl font-bold text-destructive mb-2">Zona de perigo</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Excluir sua conta remove <strong>permanentemente</strong> seu perfil, todos os vídeos,
+        todas as fotos, vouchers e histórico. Esta ação <strong>não pode ser desfeita</strong>.
+      </p>
+      <AlertDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setConfirmText(""); }}>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive" size="lg">
+            <Trash2 className="w-4 h-4 mr-2" />
+            Excluir minha conta permanentemente
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl text-destructive">
+              Excluir conta definitivamente?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-base">
+                <p>Esta ação irá <strong>apagar para sempre</strong>:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>Seu perfil público e dados de cadastro</li>
+                  <li>Todos os vídeos cadastrados e arquivos enviados</li>
+                  <li>Todas as fotos do seu portfólio</li>
+                  <li>Todos os vouchers emitidos</li>
+                  <li>Seu acesso ao painel</li>
+                </ul>
+                <p className="text-destructive font-semibold">
+                  Não há como recuperar nada depois disso.
+                </p>
+                <div className="pt-2">
+                  <Label className="text-sm">
+                    Para confirmar, digite <code className="bg-muted px-1 rounded">EXCLUIR</code> abaixo:
+                  </Label>
+                  <Input
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="EXCLUIR"
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirmText !== "EXCLUIR" || deleting}
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Excluindo..." : "Sim, excluir tudo"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
