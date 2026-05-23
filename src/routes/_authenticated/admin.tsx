@@ -727,46 +727,117 @@ function VideosTab({ userId }: { userId: string }) {
       ) : (
         <div className="border border-border rounded-xl p-6 space-y-4 max-w-2xl">
           <h3 className="font-semibold">Novo conteúdo</h3>
+
           <div>
-            <Label>Arquivo de vídeo</Label>
-            <Input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleFile("video", e.target.files[0])} />
-            {form.video_url && (
-              <p className="text-xs text-primary mt-1">
-                ✓ Enviado{form.duration_seconds ? ` · duração ${formatDuration(form.duration_seconds)}` : ""}
-              </p>
-            )}
+            <Label className="mb-2 block">Tipo de conteúdo</Label>
+            <div className="flex gap-2">
+              <Button type="button" variant={contentType === "video" ? "default" : "outline"} size="sm" onClick={() => setContentType("video")}>
+                Vídeo
+              </Button>
+              <Button type="button" variant={contentType === "photo_pack" ? "default" : "outline"} size="sm" onClick={() => setContentType("photo_pack")}>
+                Pack de fotos
+              </Button>
+            </div>
           </div>
-          <div>
-            <Label>Miniatura (opcional — gerada automaticamente do vídeo se vazia)</Label>
-            <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile("thumb", e.target.files[0])} />
-            {form.thumbnail_url && (
-              <div className="mt-2 flex items-center gap-3">
-                <img src={form.thumbnail_url} alt="miniatura" className="w-24 h-16 object-cover rounded" />
-                <p className="text-xs text-primary">✓ {thumbManual ? "Enviada" : "Gerada automaticamente"}</p>
+
+          {contentType === "video" ? (
+            <>
+              <div>
+                <Label>Arquivo de vídeo</Label>
+                <Input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleFile("video", e.target.files[0])} />
+                {form.video_url && (
+                  <p className="text-xs text-primary mt-1">
+                    ✓ Enviado{form.duration_seconds ? ` · duração ${formatDuration(form.duration_seconds)}` : ""}
+                  </p>
+                )}
               </div>
-            )}
-          </div>
+              <div>
+                <Label>Miniatura (opcional — gerada automaticamente do vídeo se vazia)</Label>
+                <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile("thumb", e.target.files[0])} />
+                {form.thumbnail_url && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <img src={form.thumbnail_url} alt="miniatura" className="w-24 h-16 object-cover rounded" />
+                    <p className="text-xs text-primary">✓ {thumbManual ? "Enviada" : "Gerada automaticamente"}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div>
+              <Label>Fotos do pack (envie 1 ou mais — pode ser pack de 10)</Label>
+              <Input type="file" accept="image/*" multiple onChange={(e) => e.target.files && handlePackPhotos(e.target.files)} />
+              <p className="text-xs text-muted-foreground mt-1">
+                Selecione uma foto como <strong>capa</strong> — ela aparecerá borrada com a marca "CENSURADO" para o cliente.
+              </p>
+              {packPhotos.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-3">
+                  {packPhotos.map((p, i) => (
+                    <div key={i} className={`relative aspect-square rounded-lg overflow-hidden border-2 ${i === coverIdx ? "border-primary" : "border-border"}`}>
+                      <img src={p.url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setCoverIdx(i)}
+                        className={`absolute bottom-1 left-1 right-1 text-[10px] font-bold py-0.5 rounded ${i === coverIdx ? "bg-primary text-primary-foreground" : "bg-background/80 text-foreground"}`}
+                      >
+                        {i === coverIdx ? "✓ CAPA" : "definir capa"}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Remover"
+                        onClick={() => {
+                          setPackPhotos((prev) => prev.filter((_, idx) => idx !== i));
+                          if (coverIdx === i) setCoverIdx(0);
+                          else if (coverIdx > i) setCoverIdx((c) => c - 1);
+                        }}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div><Label>Título</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
           <div><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-          <div>
-            <Label>Resolução do vídeo (opcional)</Label>
-            <Select value={form.resolution || "none"} onValueChange={(v) => setForm({ ...form, resolution: v === "none" ? "" : v })}>
-              <SelectTrigger><SelectValue placeholder="Não informar" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Não informar</SelectItem>
-                {RESOLUTION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+
+          {contentType === "video" && (
+            <div>
+              <Label>Resolução do vídeo (opcional)</Label>
+              <Select value={form.resolution || "none"} onValueChange={(v) => setForm({ ...form, resolution: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Não informar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não informar</SelectItem>
+                  {RESOLUTION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 py-1">
             <Checkbox id="is_free" checked={form.is_free} onCheckedChange={(c) => setForm({ ...form, is_free: !!c, price: c ? "0" : form.price })} />
-            <Label htmlFor="is_free" className="cursor-pointer font-normal">Vídeo gratuito (para divulgação) — qualquer pessoa pode assistir</Label>
+            <Label htmlFor="is_free" className="cursor-pointer font-normal">
+              {contentType === "photo_pack" ? "Pack gratuito (para divulgação)" : "Vídeo gratuito (para divulgação) — qualquer pessoa pode assistir"}
+            </Label>
           </div>
           {!form.is_free && (
             <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
           )}
           <div className="flex gap-2">
-            <Button onClick={save} disabled={uploading || !form.video_url || !form.title || (!form.is_free && !form.price)} className="bg-gradient-primary">{uploading ? "Enviando..." : "Salvar"}</Button>
+            <Button
+              onClick={save}
+              disabled={
+                uploading ||
+                !form.title ||
+                (!form.is_free && !form.price) ||
+                (contentType === "video" ? !form.video_url : packPhotos.length === 0)
+              }
+              className="bg-gradient-primary"
+            >
+              {uploading ? "Enviando..." : "Salvar"}
+            </Button>
             <Button variant="ghost" onClick={reset}>Cancelar</Button>
           </div>
         </div>
