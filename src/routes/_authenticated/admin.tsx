@@ -596,21 +596,62 @@ function VideosTab({ userId }: { userId: string }) {
     finally { setUploading(false); }
   };
 
+  const handlePackPhotos = async (files: FileList) => {
+    setUploading(true);
+    try {
+      const uploaded: { url: string }[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const url = await uploadFile("free-photos", userId, files[i]);
+        uploaded.push({ url });
+      }
+      setPackPhotos((prev) => [...prev, ...uploaded]);
+      toast.success(`${files.length} foto(s) enviadas`);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setUploading(false); }
+  };
+
   const save = async () => {
     try {
-      const { error } = await supabase.from("videos").insert({
-        creator_id: userId,
-        title: form.title,
-        description: form.description,
-        price_brl: form.is_free ? 0 : Number(form.price),
-        video_url: form.video_url,
-        thumbnail_url: form.thumbnail_url || null,
-        is_free: form.is_free,
-        resolution: form.resolution || null,
-        duration_seconds: form.duration_seconds || null,
-      });
-      if (error) throw error;
-      toast.success("Conteúdo cadastrado");
+      if (contentType === "photo_pack") {
+        if (packPhotos.length === 0) { toast.error("Envie ao menos 1 foto"); return; }
+        const cover = packPhotos[coverIdx]?.url ?? packPhotos[0].url;
+        const { data: inserted, error } = await supabase.from("videos").insert({
+          creator_id: userId,
+          title: form.title,
+          description: form.description,
+          price_brl: form.is_free ? 0 : Number(form.price),
+          video_url: null,
+          thumbnail_url: cover,
+          is_free: form.is_free,
+          content_type: "photo_pack",
+        }).select("id").single();
+        if (error) throw error;
+        const rows = packPhotos.map((p, i) => ({
+          video_id: inserted.id,
+          creator_id: userId,
+          photo_url: p.url,
+          order_index: i,
+          is_cover: i === coverIdx,
+        }));
+        const { error: phErr } = await supabase.from("pack_photos").insert(rows);
+        if (phErr) throw phErr;
+        toast.success("Pack de fotos cadastrado");
+      } else {
+        const { error } = await supabase.from("videos").insert({
+          creator_id: userId,
+          title: form.title,
+          description: form.description,
+          price_brl: form.is_free ? 0 : Number(form.price),
+          video_url: form.video_url,
+          thumbnail_url: form.thumbnail_url || null,
+          is_free: form.is_free,
+          resolution: form.resolution || null,
+          duration_seconds: form.duration_seconds || null,
+          content_type: "video",
+        });
+        if (error) throw error;
+        toast.success("Vídeo cadastrado");
+      }
       reset();
       qc.invalidateQueries({ queryKey: ["my-videos"] });
     } catch (e: any) { toast.error(e.message); }
@@ -622,6 +663,7 @@ function VideosTab({ userId }: { userId: string }) {
   };
   const del = async (id: string) => {
     if (!confirm("Excluir conteúdo?")) return;
+    await supabase.from("pack_photos").delete().eq("video_id", id);
     await supabase.from("videos").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["my-videos"] });
   };
