@@ -909,3 +909,250 @@ function FinanceTab({ userId }: { userId: string }) {
     </div>
   );
 }
+
+type Period = "today" | "7d" | "month" | "all";
+
+function periodRange(p: Period): { from?: string; to?: string } {
+  const now = new Date();
+  if (p === "all") return {};
+  if (p === "today") {
+    const d = new Date(now); d.setHours(0, 0, 0, 0);
+    return { from: d.toISOString() };
+  }
+  if (p === "7d") {
+    const d = new Date(now); d.setDate(d.getDate() - 7);
+    return { from: d.toISOString() };
+  }
+  const d = new Date(now.getFullYear(), now.getMonth(), 1);
+  return { from: d.toISOString() };
+}
+
+function VouchersTab() {
+  const queryClient = useQueryClient();
+  const [period, setPeriod] = useState<Period>("month");
+  const [search, setSearch] = useState("");
+  const [videoFilter, setVideoFilter] = useState<string>("all");
+  const [status, setStatus] = useState<"all" | "active" | "revoked">("all");
+
+  const fetchList = useServerFn(listAllVouchers);
+  const fetchStats = useServerFn(getVoucherStats);
+  const doRevoke = useServerFn(revokeVoucher);
+  const doFeature = useServerFn(setVideoFeatured);
+
+  const range = useMemo(() => periodRange(period), [period]);
+
+  const { data: listData } = useQuery({
+    queryKey: ["all-vouchers", period, search, videoFilter, status],
+    queryFn: () => fetchList({
+      data: {
+        ...range,
+        videoId: videoFilter === "all" ? undefined : videoFilter,
+        status,
+        search: search.trim() || undefined,
+      },
+    }),
+  });
+  const { data: statsData } = useQuery({
+    queryKey: ["voucher-stats", period],
+    queryFn: () => fetchStats({ data: range }),
+  });
+
+  const { data: myVideos } = useQuery({
+    queryKey: ["my-videos-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("videos")
+        .select("id, title, is_featured")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const featuredMap = useMemo(() => {
+    const m = new Map<string, boolean>();
+    (myVideos ?? []).forEach((v: any) => m.set(v.id, !!v.is_featured));
+    return m;
+  }, [myVideos]);
+
+  const handleRevoke = async (id: string) => {
+    if (!confirm("Revogar este voucher? O cliente perderá o acesso.")) return;
+    try {
+      await doRevoke({ data: { voucherId: id } });
+      toast.success("Voucher revogado");
+      queryClient.invalidateQueries({ queryKey: ["all-vouchers"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const handleFeature = async (videoId: string, featured: boolean) => {
+    try {
+      await doFeature({ data: { videoId, featured } });
+      toast.success(featured ? "Adicionado aos Mais Vendidos" : "Removido dos Mais Vendidos");
+      queryClient.invalidateQueries({ queryKey: ["my-videos-list"] });
+      queryClient.invalidateQueries({ queryKey: ["featured-videos"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const vouchers = listData?.vouchers ?? [];
+  const stats = statsData ?? { count: 0, revenue: 0, topVideos: [] as Array<{ videoId: string; title: string; count: number; revenue: number }> };
+
+  return (
+    <div className="space-y-6">
+      {/* Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-sm text-muted-foreground">Vouchers emitidos</p>
+          <p className="text-3xl font-bold mt-1">{stats.count}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-sm text-muted-foreground">Receita total</p>
+          <p className="text-3xl font-bold mt-1 text-primary">{formatBRL(stats.revenue)}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-sm text-muted-foreground">Vídeo mais vendido</p>
+          <p className="text-base font-semibold mt-1 line-clamp-2">
+            {stats.topVideos[0]?.title ?? "—"}
+          </p>
+          {stats.topVideos[0] && (
+            <p className="text-xs text-muted-foreground mt-1">{stats.topVideos[0].count} vendas</p>
+          )}
+        </div>
+      </div>
+
+      {/* Ranking */}
+      {stats.topVideos.length > 0 && (
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" /> Top 5 do período
+          </h3>
+          <div className="space-y-2">
+            {stats.topVideos.map((v, i) => {
+              const isFeat = featuredMap.get(v.videoId) ?? false;
+              return (
+                <div key={v.videoId} className="flex items-center gap-3 text-sm">
+                  <span className="w-6 text-muted-foreground font-mono">{i + 1}º</span>
+                  <span className="flex-1 truncate">{v.title}</span>
+                  <span className="text-muted-foreground">{v.count} venda(s) · {formatBRL(v.revenue)}</span>
+                  <Button
+                    size="sm"
+                    variant={isFeat ? "default" : "outline"}
+                    onClick={() => handleFeature(v.videoId, !isFeat)}
+                  >
+                    <Flame className="w-3.5 h-3.5 mr-1" />
+                    {isFeat ? "Em destaque" : "Destacar"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Hoje</SelectItem>
+            <SelectItem value="7d">7 dias</SelectItem>
+            <SelectItem value="month">Este mês</SelectItem>
+            <SelectItem value="all">Tudo</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={videoFilter} onValueChange={setVideoFilter}>
+          <SelectTrigger className="w-56"><SelectValue placeholder="Vídeo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os vídeos</SelectItem>
+            {(myVideos ?? []).map((v: any) => (
+              <SelectItem key={v.id} value={v.id}>{v.title}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="revoked">Revogados</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="Buscar código ou comprador"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-w-48 max-w-sm"
+        />
+      </div>
+
+      {/* Tabela */}
+      <div className="border border-border rounded-xl overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Código</TableHead>
+              <TableHead>Vídeo</TableHead>
+              <TableHead>Comprador</TableHead>
+              <TableHead>Valor</TableHead>
+              <TableHead>Criado</TableHead>
+              <TableHead>Usos</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {vouchers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  Nenhum voucher no período.
+                </TableCell>
+              </TableRow>
+            ) : vouchers.map((v: any) => (
+              <TableRow key={v.id}>
+                <TableCell className="font-mono font-semibold">{v.code}</TableCell>
+                <TableCell className="max-w-xs">
+                  <div className="flex items-center gap-2">
+                    {v.videos?.thumbnail_url && (
+                      <img src={v.videos.thumbnail_url} alt="" className="w-10 h-10 rounded object-cover" />
+                    )}
+                    <span className="truncate">{v.videos?.title ?? "—"}</span>
+                  </div>
+                </TableCell>
+                <TableCell>{v.customer_label ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                <TableCell>{v.amount_paid != null ? formatBRL(Number(v.amount_paid)) : "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {new Date(v.created_at).toLocaleDateString("pt-BR")}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {v.use_count}
+                  {v.last_used_at && (
+                    <div className="text-muted-foreground">
+                      últ: {new Date(v.last_used_at).toLocaleDateString("pt-BR")}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {v.is_active ? (
+                    <span className="text-xs px-2 py-1 rounded bg-primary/15 text-primary">Ativo</span>
+                  ) : (
+                    <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">Revogado</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {v.is_active && (
+                    <Button size="sm" variant="ghost" onClick={() => handleRevoke(v.id)}>
+                      Revogar
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
