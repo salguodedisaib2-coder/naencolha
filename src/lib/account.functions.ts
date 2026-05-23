@@ -33,6 +33,7 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     // 2. Database rows
     await supabaseAdmin.from("video_vouchers").delete().eq("creator_id", userId);
     await supabaseAdmin.from("purchases").delete().eq("creator_id", userId);
+    await supabaseAdmin.from("pack_photos").delete().eq("creator_id", userId);
     await supabaseAdmin.from("videos").delete().eq("creator_id", userId);
     await supabaseAdmin.from("free_photos").delete().eq("creator_id", userId);
     await supabaseAdmin.from("creator_services").delete().eq("creator_id", userId);
