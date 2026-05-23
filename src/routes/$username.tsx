@@ -171,22 +171,67 @@ function ProfilePage() {
         <section className="container mx-auto px-4 mt-12">
           <h2 className="text-2xl font-bold mb-6">Trabalhos que realiza</h2>
           <div className="space-y-5">
-            {CATEGORY_ORDER.map((cat) => {
-              const items = servicesByCategory.get(cat);
-              if (!items || items.length === 0) return null;
-              return (
-                <div key={cat}>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    {CATEGORY_LABELS[cat]}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {items.map((s) => (
-                      <ServiceChip key={s.id} label={s.label} active />
-                    ))}
-                  </div>
-                </div>
+            {(() => {
+              const rendered = new Set<ServiceCategory>();
+              const blocks: JSX.Element[] = [];
+              const aparenciaCats = CATEGORY_ORDER.filter((c) =>
+                c.startsWith("aparencia_"),
               );
-            })}
+              const hasAparencia = aparenciaCats.some(
+                (c) => (servicesByCategory.get(c)?.length ?? 0) > 0,
+              );
+
+              CATEGORY_ORDER.forEach((cat) => {
+                if (rendered.has(cat)) return;
+                if (cat.startsWith("aparencia_")) {
+                  if (!hasAparencia) return;
+                  aparenciaCats.forEach((c) => rendered.add(c));
+                  blocks.push(
+                    <div key="aparencia">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Aparência
+                      </h3>
+                      <div className="space-y-3">
+                        {aparenciaCats.map((c) => {
+                          const items = servicesByCategory.get(c);
+                          if (!items || items.length === 0) return null;
+                          const sub = CATEGORY_LABELS[c].split("—")[1]?.trim() ?? "";
+                          return (
+                            <div key={c}>
+                              <div className="text-xs font-medium text-muted-foreground/80 mb-1.5">
+                                {sub}
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {items.map((s) => (
+                                  <ServiceChip key={s.id} label={s.label} active />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>,
+                  );
+                  return;
+                }
+                const items = servicesByCategory.get(cat);
+                if (!items || items.length === 0) return;
+                rendered.add(cat);
+                blocks.push(
+                  <div key={cat}>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      {CATEGORY_LABELS[cat]}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {items.map((s) => (
+                        <ServiceChip key={s.id} label={s.label} active />
+                      ))}
+                    </div>
+                  </div>,
+                );
+              });
+              return blocks;
+            })()}
           </div>
         </section>
       )}
