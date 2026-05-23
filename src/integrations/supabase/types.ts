@@ -103,6 +103,36 @@ export type Database = {
           },
         ]
       }
+      pack_photos: {
+        Row: {
+          created_at: string
+          creator_id: string
+          id: string
+          is_cover: boolean
+          order_index: number
+          photo_url: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          id?: string
+          is_cover?: boolean
+          order_index?: number
+          photo_url: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          id?: string
+          is_cover?: boolean
+          order_index?: number
+          photo_url?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -307,6 +337,7 @@ export type Database = {
       }
       videos: {
         Row: {
+          content_type: string
           created_at: string
           creator_id: string
           description: string | null
@@ -320,9 +351,10 @@ export type Database = {
           resolution: string | null
           thumbnail_url: string | null
           title: string
-          video_url: string
+          video_url: string | null
         }
         Insert: {
+          content_type?: string
           created_at?: string
           creator_id: string
           description?: string | null
@@ -336,9 +368,10 @@ export type Database = {
           resolution?: string | null
           thumbnail_url?: string | null
           title: string
-          video_url: string
+          video_url?: string | null
         }
         Update: {
+          content_type?: string
           created_at?: string
           creator_id?: string
           description?: string | null
@@ -352,7 +385,7 @@ export type Database = {
           resolution?: string | null
           thumbnail_url?: string | null
           title?: string
-          video_url?: string
+          video_url?: string | null
         }
         Relationships: [
           {
