@@ -256,10 +256,13 @@ export type Database = {
           created_at: string
           creator_id: string
           description: string | null
+          duration_seconds: number | null
           id: string
           is_active: boolean
+          is_free: boolean
           price_brl: number
           purchase_count: number
+          resolution: string | null
           thumbnail_url: string | null
           title: string
           video_url: string
@@ -268,10 +271,13 @@ export type Database = {
           created_at?: string
           creator_id: string
           description?: string | null
+          duration_seconds?: number | null
           id?: string
           is_active?: boolean
+          is_free?: boolean
           price_brl: number
           purchase_count?: number
+          resolution?: string | null
           thumbnail_url?: string | null
           title: string
           video_url: string
@@ -280,10 +286,13 @@ export type Database = {
           created_at?: string
           creator_id?: string
           description?: string | null
+          duration_seconds?: number | null
           id?: string
           is_active?: boolean
+          is_free?: boolean
           price_brl?: number
           purchase_count?: number
+          resolution?: string | null
           thumbnail_url?: string | null
           title?: string
           video_url?: string
