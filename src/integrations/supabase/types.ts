@@ -298,6 +298,7 @@ export type Database = {
           duration_seconds: number | null
           id: string
           is_active: boolean
+          is_featured: boolean
           is_free: boolean
           price_brl: number
           purchase_count: number
@@ -313,6 +314,7 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           is_active?: boolean
+          is_featured?: boolean
           is_free?: boolean
           price_brl: number
           purchase_count?: number
@@ -328,6 +330,7 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           is_active?: boolean
+          is_featured?: boolean
           is_free?: boolean
           price_brl?: number
           purchase_count?: number
