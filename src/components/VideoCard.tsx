@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatBRL } from "@/lib/categories";
-import { Play, Ticket } from "lucide-react";
+import { Play, Ticket, Images } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getFreeVideoUrl } from "@/lib/videos.functions";
 
@@ -16,6 +16,8 @@ interface Props {
   isFree?: boolean;
   resolution?: string | null;
   durationSeconds?: number | null;
+  contentType?: "video" | "photo_pack" | string | null;
+  photoCount?: number;
   onBuy: () => void;
 }
 
@@ -29,14 +31,15 @@ function formatDuration(sec?: number | null) {
   return h > 0 ? `${h}:${pad(m)}:${pad(r)}` : `${m}:${pad(r)}`;
 }
 
-export function VideoCard({ id, title, description, thumbnailUrl, price, isFree, resolution, durationSeconds, onBuy }: Props) {
+export function VideoCard({ id, title, description, thumbnailUrl, price, isFree, resolution, durationSeconds, contentType, photoCount, onBuy }: Props) {
   const [open, setOpen] = useState(false);
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [loadingPlay, setLoadingPlay] = useState(false);
   const fetchFreeUrl = useServerFn(getFreeVideoUrl);
+  const isPack = contentType === "photo_pack";
 
   useEffect(() => {
-    if (!open || !isFree || playUrl) return;
+    if (!open || isPack || !isFree || playUrl) return;
     let cancelled = false;
     (async () => {
       setLoadingPlay(true);
@@ -50,9 +53,12 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
       }
     })();
     return () => { cancelled = true; };
-  }, [open, isFree, id, playUrl, fetchFreeUrl]);
+  }, [open, isFree, isPack, id, playUrl, fetchFreeUrl]);
 
   const durationLabel = formatDuration(durationSeconds);
+  const typeLabel = isPack
+    ? (photoCount && photoCount > 1 ? `PACK ${photoCount} FOTOS` : "FOTO")
+    : "VÍDEO";
 
   return (
     <>
@@ -65,26 +71,39 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
             <img
               src={thumbnailUrl}
               alt={title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isPack && !isFree ? "blur-xl scale-110" : ""}`}
               loading="lazy"
             />
           ) : (
             <div className="w-full h-full bg-gradient-primary opacity-30 flex items-center justify-center">
-              <Play className="w-12 h-12 text-foreground/50" />
+              {isPack ? <Images className="w-12 h-12 text-foreground/50" /> : <Play className="w-12 h-12 text-foreground/50" />}
             </div>
           )}
+          {isPack && !isFree && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="px-4 py-1.5 rounded-md bg-background/80 text-foreground text-sm font-extrabold tracking-[0.3em] border border-border shadow-lg backdrop-blur-sm">
+                CENSURADO
+              </span>
+            </div>
+          )}
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-background/80 text-foreground text-[10px] font-bold tracking-wide backdrop-blur-sm flex items-center gap-1">
+            {isPack ? <Images className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            {typeLabel}
+          </div>
           <div className="absolute top-2 right-2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow">
             {isFree ? "GRÁTIS" : formatBRL(price)}
           </div>
-          {(resolution || durationLabel) && (
+          {!isPack && (resolution || durationLabel) && (
             <div className="absolute bottom-2 left-2 flex gap-1">
               {resolution && <span className="px-2 py-0.5 rounded bg-background/70 text-foreground text-[10px] font-semibold backdrop-blur-sm">{resolution}</span>}
               {durationLabel && <span className="px-2 py-0.5 rounded bg-background/70 text-foreground text-[10px] font-semibold backdrop-blur-sm">{durationLabel}</span>}
             </div>
           )}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/40">
-            <Play className="w-16 h-16 text-primary fill-primary" />
-          </div>
+          {!isPack && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/40">
+              <Play className="w-16 h-16 text-primary fill-primary" />
+            </div>
+          )}
         </div>
         <div className="p-4">
           <h3 className="font-semibold mb-1 line-clamp-1">{title}</h3>
@@ -94,12 +113,12 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              if (isFree) setOpen(true);
+              if (!isPack && isFree) setOpen(true);
               else onBuy();
             }}
             className="w-full bg-gradient-primary"
           >
-            {isFree ? "Assistir grátis" : "Comprar via PIX"}
+            {isPack ? "Comprar via PIX" : (isFree ? "Assistir grátis" : "Comprar via PIX")}
           </Button>
           {!isFree && (
             <Link
@@ -117,7 +136,24 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl p-0 overflow-hidden">
           <div className="aspect-video bg-black relative">
-            {isFree ? (
+            {isPack ? (
+              thumbnailUrl ? (
+                <>
+                  <img src={thumbnailUrl} alt={title} className={`w-full h-full object-cover ${!isFree ? "blur-xl scale-110" : ""}`} />
+                  {!isFree && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="px-6 py-2 rounded-md bg-background/80 text-foreground text-lg font-extrabold tracking-[0.4em] border border-border shadow-lg backdrop-blur-sm">
+                        CENSURADO
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                  <Images className="w-16 h-16" />
+                </div>
+              )
+            ) : isFree ? (
               playUrl ? (
                 <video
                   src={playUrl}
@@ -138,6 +174,10 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
                 <Play className="w-16 h-16 text-foreground/50" />
               </div>
             )}
+            <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-background/80 text-foreground text-xs font-bold tracking-wide backdrop-blur-sm flex items-center gap-1">
+              {isPack ? <Images className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              {typeLabel}
+            </div>
             <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow">
               {isFree ? "GRÁTIS" : formatBRL(price)}
             </div>
@@ -151,7 +191,7 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
                 </DialogDescription>
               )}
             </DialogHeader>
-            {(resolution || durationLabel) && (
+            {!isPack && (resolution || durationLabel) && (
               <p className="text-xs text-muted-foreground mt-3">
                 {resolution}{resolution && durationLabel ? " · " : ""}{durationLabel}
               </p>
