@@ -37,6 +37,7 @@ type VideoRow = {
   purchase_count: number;
   created_at: string;
   creator_id: string;
+  content_type: string | null;
   profiles: { username: string; full_name: string | null; is_active: boolean };
 };
 
