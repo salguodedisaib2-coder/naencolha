@@ -24,7 +24,7 @@ export const getFreeVideoUrl = createServerFn({ method: "POST" })
       throw new Error("Vídeo indisponível");
     }
 
-    const path = extractVideosPath(row.video_url);
+    const path = row.video_url ? extractVideosPath(row.video_url) : "";
     if (!path) throw new Error("Caminho do vídeo inválido");
 
     const { data: signed, error: signErr } = await supabaseAdmin
