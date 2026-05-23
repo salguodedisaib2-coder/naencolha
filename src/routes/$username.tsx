@@ -278,7 +278,7 @@ function ProfilePage() {
                 isFree={!!v.is_free}
                 resolution={v.resolution}
                 durationSeconds={v.duration_seconds}
-                onBuy={handleBuy}
+                onBuy={() => handleBuy(v)}
               />
             ))}
           </div>
