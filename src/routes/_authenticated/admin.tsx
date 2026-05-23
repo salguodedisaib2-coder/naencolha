@@ -303,12 +303,12 @@ function VideosTab({ userId }: { userId: string }) {
     },
   });
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", price: "", video_url: "", thumbnail_url: "" });
+  const [form, setForm] = useState({ title: "", description: "", price: "", video_url: "", thumbnail_url: "", is_free: false, resolution: "", duration_seconds: 0 });
   const [uploading, setUploading] = useState(false);
   const [thumbManual, setThumbManual] = useState(false);
 
   const reset = () => {
-    setForm({ title: "", description: "", price: "", video_url: "", thumbnail_url: "" });
+    setForm({ title: "", description: "", price: "", video_url: "", thumbnail_url: "", is_free: false, resolution: "", duration_seconds: 0 });
     setThumbManual(false);
     setAdding(false);
   };
