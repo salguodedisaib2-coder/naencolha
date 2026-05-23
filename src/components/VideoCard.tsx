@@ -1,19 +1,67 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatBRL } from "@/lib/categories";
 import { Play } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   title: string;
   description?: string | null;
   thumbnailUrl: string | null;
   price: number;
+  isFree?: boolean;
+  videoUrl?: string | null;
+  resolution?: string | null;
+  durationSeconds?: number | null;
   onBuy: () => void;
 }
 
-export function VideoCard({ title, description, thumbnailUrl, price, onBuy }: Props) {
+function formatDuration(sec?: number | null) {
+  if (!sec || sec <= 0) return "";
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(r)}` : `${m}:${pad(r)}`;
+}
+
+function extractVideosPath(url: string) {
+  const direct = "/storage/v1/object/public/videos/";
+  const signed = "/storage/v1/object/sign/videos/";
+  if (url.includes(direct)) return url.split(direct)[1]?.split("?")[0] ?? "";
+  if (url.includes(signed)) return url.split(signed)[1]?.split("?")[0] ?? "";
+  return "";
+}
+
+export function VideoCard({ title, description, thumbnailUrl, price, isFree, videoUrl, resolution, durationSeconds, onBuy }: Props) {
   const [open, setOpen] = useState(false);
+  const [playUrl, setPlayUrl] = useState<string | null>(null);
+  const [loadingPlay, setLoadingPlay] = useState(false);
+
+  useEffect(() => {
+    if (!open || !isFree || !videoUrl || playUrl) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingPlay(true);
+      try {
+        const path = extractVideosPath(videoUrl);
+        if (path) {
+          const { data, error } = await supabase.storage.from("videos").createSignedUrl(path, 60 * 60);
+          if (!cancelled && !error && data) setPlayUrl(data.signedUrl);
+          else if (!cancelled) setPlayUrl(videoUrl);
+        } else if (!cancelled) {
+          setPlayUrl(videoUrl);
+        }
+      } finally {
+        if (!cancelled) setLoadingPlay(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, isFree, videoUrl, playUrl]);
+
+  const durationLabel = formatDuration(durationSeconds);
 
   return (
     <>
@@ -35,8 +83,14 @@ export function VideoCard({ title, description, thumbnailUrl, price, onBuy }: Pr
             </div>
           )}
           <div className="absolute top-2 right-2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow">
-            {formatBRL(price)}
+            {isFree ? "GRÁTIS" : formatBRL(price)}
           </div>
+          {(resolution || durationLabel) && (
+            <div className="absolute bottom-2 left-2 flex gap-1">
+              {resolution && <span className="px-2 py-0.5 rounded bg-background/70 text-foreground text-[10px] font-semibold backdrop-blur-sm">{resolution}</span>}
+              {durationLabel && <span className="px-2 py-0.5 rounded bg-background/70 text-foreground text-[10px] font-semibold backdrop-blur-sm">{durationLabel}</span>}
+            </div>
+          )}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/40">
             <Play className="w-16 h-16 text-primary fill-primary" />
           </div>
@@ -49,19 +103,34 @@ export function VideoCard({ title, description, thumbnailUrl, price, onBuy }: Pr
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              onBuy();
+              if (isFree) setOpen(true);
+              else onBuy();
             }}
             className="w-full bg-gradient-primary"
           >
-            Comprar via PIX
+            {isFree ? "Assistir grátis" : "Comprar via PIX"}
           </Button>
         </div>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl p-0 overflow-hidden">
-          <div className="aspect-video bg-muted relative">
-            {thumbnailUrl ? (
+          <div className="aspect-video bg-black relative">
+            {isFree ? (
+              playUrl ? (
+                <video
+                  src={playUrl}
+                  controls
+                  autoPlay
+                  className="w-full h-full"
+                  poster={thumbnailUrl ?? undefined}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                  {loadingPlay ? "Carregando vídeo..." : "Vídeo indisponível"}
+                </div>
+              )
+            ) : thumbnailUrl ? (
               <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gradient-primary opacity-30 flex items-center justify-center">
@@ -69,7 +138,7 @@ export function VideoCard({ title, description, thumbnailUrl, price, onBuy }: Pr
               </div>
             )}
             <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow">
-              {formatBRL(price)}
+              {isFree ? "GRÁTIS" : formatBRL(price)}
             </div>
           </div>
           <div className="p-6">
@@ -81,15 +150,22 @@ export function VideoCard({ title, description, thumbnailUrl, price, onBuy }: Pr
                 </DialogDescription>
               )}
             </DialogHeader>
-            <Button
-              onClick={() => {
-                setOpen(false);
-                onBuy();
-              }}
-              className="w-full bg-gradient-primary mt-6"
-            >
-              Comprar via PIX — {formatBRL(price)}
-            </Button>
+            {(resolution || durationLabel) && (
+              <p className="text-xs text-muted-foreground mt-3">
+                {resolution}{resolution && durationLabel ? " · " : ""}{durationLabel}
+              </p>
+            )}
+            {!isFree && (
+              <Button
+                onClick={() => {
+                  setOpen(false);
+                  onBuy();
+                }}
+                className="w-full bg-gradient-primary mt-6"
+              >
+                Comprar via PIX — {formatBRL(price)}
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
