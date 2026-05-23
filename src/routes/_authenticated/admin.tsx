@@ -7,11 +7,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ServiceChip } from "@/components/ServiceChip";
 import { CATEGORY_LABELS, CATEGORY_ORDER, formatBRL, type ServiceCategory } from "@/lib/categories";
 import { toast } from "sonner";
 import { Trash2, Upload } from "lucide-react";
+
+const RESOLUTION_OPTIONS = [
+  { value: "480p", label: "480p (SD)" },
+  { value: "720p", label: "720p (HD)" },
+  { value: "1080p", label: "1080p (Full HD)" },
+  { value: "1440p", label: "1440p (2K)" },
+  { value: "2160p", label: "2160p (4K)" },
+  { value: "4320p", label: "4320p (8K)" },
+];
+
+function formatDuration(sec?: number | null) {
+  if (!sec || sec <= 0) return "";
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(r)}` : `${m}:${pad(r)}`;
+}
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Painel — NaEncolha" }] }),
