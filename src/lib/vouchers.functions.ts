@@ -136,13 +136,18 @@ export const redeemVoucher = createServerFn({ method: "POST" })
     if (downloadRes.error || !downloadRes.data) throw new Error(downloadRes.error?.message ?? "Falha ao gerar URL de download");
 
     // record usage (best-effort)
+    const { data: current } = await supabaseAdmin
+      .from("video_vouchers")
+      .select("use_count")
+      .eq("id", voucher.id)
+      .maybeSingle();
     await supabaseAdmin
       .from("video_vouchers")
-      .update({ last_used_at: new Date().toISOString(), use_count: 1 })
+      .update({
+        last_used_at: new Date().toISOString(),
+        use_count: (current?.use_count ?? 0) + 1,
+      })
       .eq("id", voucher.id);
-
-    // Increment properly with rpc would be nice; do a follow-up read-modify-write:
-    await supabaseAdmin.rpc; // no-op to keep types
 
     return {
       streamUrl: streamRes.data.signedUrl,
