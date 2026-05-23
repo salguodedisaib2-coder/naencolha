@@ -73,7 +73,7 @@ function HomePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("videos")
-        .select("id, title, thumbnail_url, price_brl, is_free, creator_id, profiles!inner(username, full_name, is_active)")
+        .select("id, title, thumbnail_url, price_brl, is_free, content_type, creator_id, profiles!inner(username, full_name, is_active)")
         .eq("is_featured", true)
         .eq("is_active", true)
         .eq("profiles.is_active", true)
