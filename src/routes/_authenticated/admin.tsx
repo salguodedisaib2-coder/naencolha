@@ -542,7 +542,15 @@ function VideosTab({ userId }: { userId: string }) {
       ) : (
         <div className="border border-border rounded-xl p-6 space-y-4 max-w-2xl">
           <h3 className="font-semibold">Novo conteúdo</h3>
-          <div><Label>Arquivo de vídeo</Label><Input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleFile("video", e.target.files[0])} />{form.video_url && <p className="text-xs text-primary mt-1">✓ Enviado</p>}</div>
+          <div>
+            <Label>Arquivo de vídeo</Label>
+            <Input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleFile("video", e.target.files[0])} />
+            {form.video_url && (
+              <p className="text-xs text-primary mt-1">
+                ✓ Enviado{form.duration_seconds ? ` · duração ${formatDuration(form.duration_seconds)}` : ""}
+              </p>
+            )}
+          </div>
           <div>
             <Label>Miniatura (opcional — gerada automaticamente do vídeo se vazia)</Label>
             <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile("thumb", e.target.files[0])} />
@@ -555,9 +563,25 @@ function VideosTab({ userId }: { userId: string }) {
           </div>
           <div><Label>Título</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
           <div><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-          <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+          <div>
+            <Label>Resolução do vídeo (opcional)</Label>
+            <Select value={form.resolution || "none"} onValueChange={(v) => setForm({ ...form, resolution: v === "none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Não informar" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Não informar</SelectItem>
+                {RESOLUTION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 py-1">
+            <Checkbox id="is_free" checked={form.is_free} onCheckedChange={(c) => setForm({ ...form, is_free: !!c, price: c ? "0" : form.price })} />
+            <Label htmlFor="is_free" className="cursor-pointer font-normal">Vídeo gratuito (para divulgação) — qualquer pessoa pode assistir</Label>
+          </div>
+          {!form.is_free && (
+            <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+          )}
           <div className="flex gap-2">
-            <Button onClick={save} disabled={uploading || !form.video_url || !form.title || !form.price} className="bg-gradient-primary">{uploading ? "Enviando..." : "Salvar"}</Button>
+            <Button onClick={save} disabled={uploading || !form.video_url || !form.title || (!form.is_free && !form.price)} className="bg-gradient-primary">{uploading ? "Enviando..." : "Salvar"}</Button>
             <Button variant="ghost" onClick={reset}>Cancelar</Button>
           </div>
         </div>
