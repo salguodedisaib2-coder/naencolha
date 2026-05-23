@@ -8,7 +8,7 @@ import { ServiceChip } from "@/components/ServiceChip";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CATEGORY_LABELS, CATEGORY_ORDER, type ServiceCategory } from "@/lib/categories";
-import { Search, Flame } from "lucide-react";
+import { Search, Flame, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -127,12 +127,20 @@ function HomePage() {
           <Link to="/" aria-label="NaEncolha">
             <Logo className="h-20 md:h-28 w-auto" />
           </Link>
-          <Link
-            to="/login"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Área da criadora
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              to="/conteudos"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Conteúdos
+            </Link>
+            <Link
+              to="/login"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Área da criadora
+            </Link>
+          </div>
         </div>
       </header>
 
