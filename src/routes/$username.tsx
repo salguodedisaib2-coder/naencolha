@@ -60,7 +60,7 @@ function ProfilePage() {
           .order("order_index"),
         supabase
           .from("videos")
-          .select("id, title, description, thumbnail_url, price_brl")
+          .select("id, title, description, thumbnail_url, price_brl, video_url, is_free, resolution, duration_seconds")
           .eq("creator_id", profile.id)
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
@@ -224,10 +224,14 @@ function ProfilePage() {
             {videos.map((v: any) => (
               <VideoCard
                 key={v.id}
+                id={v.id}
                 title={v.title}
                 description={v.description}
                 thumbnailUrl={v.thumbnail_url}
                 price={Number(v.price_brl)}
+                isFree={!!v.is_free}
+                resolution={v.resolution}
+                durationSeconds={v.duration_seconds}
                 onBuy={handleBuy}
               />
             ))}

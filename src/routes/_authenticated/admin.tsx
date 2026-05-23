@@ -7,11 +7,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ServiceChip } from "@/components/ServiceChip";
 import { CATEGORY_LABELS, CATEGORY_ORDER, formatBRL, type ServiceCategory } from "@/lib/categories";
 import { toast } from "sonner";
 import { Trash2, Upload } from "lucide-react";
+
+const RESOLUTION_OPTIONS = [
+  { value: "480p", label: "480p (SD)" },
+  { value: "720p", label: "720p (HD)" },
+  { value: "1080p", label: "1080p (Full HD)" },
+  { value: "1440p", label: "1440p (2K)" },
+  { value: "2160p", label: "2160p (4K)" },
+  { value: "4320p", label: "4320p (8K)" },
+];
+
+function formatDuration(sec?: number | null) {
+  if (!sec || sec <= 0) return "";
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(r)}` : `${m}:${pad(r)}`;
+}
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Painel — NaEncolha" }] }),
@@ -282,12 +303,12 @@ function VideosTab({ userId }: { userId: string }) {
     },
   });
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", price: "", video_url: "", thumbnail_url: "" });
+  const [form, setForm] = useState({ title: "", description: "", price: "", video_url: "", thumbnail_url: "", is_free: false, resolution: "", duration_seconds: 0 });
   const [uploading, setUploading] = useState(false);
   const [thumbManual, setThumbManual] = useState(false);
 
   const reset = () => {
-    setForm({ title: "", description: "", price: "", video_url: "", thumbnail_url: "" });
+    setForm({ title: "", description: "", price: "", video_url: "", thumbnail_url: "", is_free: false, resolution: "", duration_seconds: 0 });
     setThumbManual(false);
     setAdding(false);
   };
@@ -409,11 +430,25 @@ function VideosTab({ userId }: { userId: string }) {
 
 
 
+  const readVideoDuration = (file: File): Promise<number> => new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.src = url;
+    const done = (d: number) => { URL.revokeObjectURL(url); resolve(d); };
+    v.onloadedmetadata = () => done(Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0);
+    v.onerror = () => done(0);
+    setTimeout(() => done(0), 8000);
+  });
+
   const handleFile = async (kind: "video" | "thumb", file: File) => {
     setUploading(true);
     try {
       if (kind === "video") {
-        const url = await uploadFile("videos", userId, file);
+        const [url, dur] = await Promise.all([
+          uploadFile("videos", userId, file),
+          readVideoDuration(file),
+        ]);
         let thumbUrl = "";
         if (!thumbManual) {
           try {
@@ -424,7 +459,7 @@ function VideosTab({ userId }: { userId: string }) {
             console.warn("Auto-thumbnail falhou:", err);
           }
         }
-        setForm((f) => ({ ...f, video_url: url, thumbnail_url: thumbUrl || f.thumbnail_url }));
+        setForm((f) => ({ ...f, video_url: url, thumbnail_url: thumbUrl || f.thumbnail_url, duration_seconds: Math.round(dur) }));
         toast.success(thumbUrl ? "Vídeo enviado (miniatura gerada)" : "Vídeo enviado");
       } else {
         const url = await uploadFile("thumbnails", userId, file);
@@ -442,9 +477,12 @@ function VideosTab({ userId }: { userId: string }) {
         creator_id: userId,
         title: form.title,
         description: form.description,
-        price_brl: Number(form.price),
+        price_brl: form.is_free ? 0 : Number(form.price),
         video_url: form.video_url,
         thumbnail_url: form.thumbnail_url || null,
+        is_free: form.is_free,
+        resolution: form.resolution || null,
+        duration_seconds: form.duration_seconds || null,
       });
       if (error) throw error;
       toast.success("Conteúdo cadastrado");
@@ -464,12 +502,19 @@ function VideosTab({ userId }: { userId: string }) {
   };
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", description: "", price: "", thumbnail_url: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", price: "", thumbnail_url: "", is_free: false, resolution: "" });
   const [editUploading, setEditUploading] = useState(false);
 
   const startEdit = (v: any) => {
     setEditingId(v.id);
-    setEditForm({ title: v.title ?? "", description: v.description ?? "", price: String(v.price_brl ?? ""), thumbnail_url: v.thumbnail_url ?? "" });
+    setEditForm({
+      title: v.title ?? "",
+      description: v.description ?? "",
+      price: String(v.price_brl ?? ""),
+      thumbnail_url: v.thumbnail_url ?? "",
+      is_free: !!v.is_free,
+      resolution: v.resolution ?? "",
+    });
   };
   const handleEditThumb = async (file: File) => {
     setEditUploading(true);
@@ -488,8 +533,10 @@ function VideosTab({ userId }: { userId: string }) {
     const { error } = await supabase.from("videos").update({
       title: editForm.title,
       description: editForm.description,
-      price_brl: Number(editForm.price),
+      price_brl: editForm.is_free ? 0 : Number(editForm.price),
       thumbnail_url: editForm.thumbnail_url || null,
+      is_free: editForm.is_free,
+      resolution: editForm.resolution || null,
     }).eq("id", editingId);
     if (error) { toast.error(error.message); return; }
     toast.success("Conteúdo atualizado");
@@ -504,7 +551,15 @@ function VideosTab({ userId }: { userId: string }) {
       ) : (
         <div className="border border-border rounded-xl p-6 space-y-4 max-w-2xl">
           <h3 className="font-semibold">Novo conteúdo</h3>
-          <div><Label>Arquivo de vídeo</Label><Input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleFile("video", e.target.files[0])} />{form.video_url && <p className="text-xs text-primary mt-1">✓ Enviado</p>}</div>
+          <div>
+            <Label>Arquivo de vídeo</Label>
+            <Input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleFile("video", e.target.files[0])} />
+            {form.video_url && (
+              <p className="text-xs text-primary mt-1">
+                ✓ Enviado{form.duration_seconds ? ` · duração ${formatDuration(form.duration_seconds)}` : ""}
+              </p>
+            )}
+          </div>
           <div>
             <Label>Miniatura (opcional — gerada automaticamente do vídeo se vazia)</Label>
             <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile("thumb", e.target.files[0])} />
@@ -517,9 +572,25 @@ function VideosTab({ userId }: { userId: string }) {
           </div>
           <div><Label>Título</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
           <div><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-          <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+          <div>
+            <Label>Resolução do vídeo (opcional)</Label>
+            <Select value={form.resolution || "none"} onValueChange={(v) => setForm({ ...form, resolution: v === "none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Não informar" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Não informar</SelectItem>
+                {RESOLUTION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 py-1">
+            <Checkbox id="is_free" checked={form.is_free} onCheckedChange={(c) => setForm({ ...form, is_free: !!c, price: c ? "0" : form.price })} />
+            <Label htmlFor="is_free" className="cursor-pointer font-normal">Vídeo gratuito (para divulgação) — qualquer pessoa pode assistir</Label>
+          </div>
+          {!form.is_free && (
+            <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+          )}
           <div className="flex gap-2">
-            <Button onClick={save} disabled={uploading || !form.video_url || !form.title || !form.price} className="bg-gradient-primary">{uploading ? "Enviando..." : "Salvar"}</Button>
+            <Button onClick={save} disabled={uploading || !form.video_url || !form.title || (!form.is_free && !form.price)} className="bg-gradient-primary">{uploading ? "Enviando..." : "Salvar"}</Button>
             <Button variant="ghost" onClick={reset}>Cancelar</Button>
           </div>
         </div>
@@ -545,7 +616,23 @@ function VideosTab({ userId }: { userId: string }) {
               <div className="flex-1 space-y-3">
                 <div><Label>Título</Label><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
                 <div><Label>Descrição</Label><Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
-                <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></div>
+                <div>
+                  <Label>Resolução (opcional)</Label>
+                  <Select value={editForm.resolution || "none"} onValueChange={(val) => setEditForm({ ...editForm, resolution: val === "none" ? "" : val })}>
+                    <SelectTrigger><SelectValue placeholder="Não informar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não informar</SelectItem>
+                      {RESOLUTION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2 py-1">
+                  <Checkbox id={`edit_free_${editingId}`} checked={editForm.is_free} onCheckedChange={(c) => setEditForm({ ...editForm, is_free: !!c, price: c ? "0" : editForm.price })} />
+                  <Label htmlFor={`edit_free_${editingId}`} className="cursor-pointer font-normal">Vídeo gratuito</Label>
+                </div>
+                {!editForm.is_free && (
+                  <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></div>
+                )}
                 <div className="flex gap-2">
                   <Button onClick={saveEdit} disabled={editUploading} className="bg-gradient-primary">Salvar</Button>
                   <Button variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
@@ -558,9 +645,16 @@ function VideosTab({ userId }: { userId: string }) {
           <div key={v.id} className="flex items-center gap-4 p-4 border border-border rounded-xl hover:border-primary transition-colors cursor-pointer" onClick={() => startEdit(v)}>
             {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-24 h-16 object-cover rounded" />}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{v.title}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold truncate">{v.title}</p>
+                {v.is_free && <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">Grátis</span>}
+                {v.resolution && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{v.resolution}</span>}
+              </div>
               <p className="text-sm text-muted-foreground line-clamp-1">{v.description || "Sem descrição — clique para editar"}</p>
-              <p className="text-xs text-muted-foreground mt-1">{formatBRL(Number(v.price_brl))} · {v.purchase_count} vendas</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {v.is_free ? "Gratuito" : formatBRL(Number(v.price_brl))} · {v.purchase_count} vendas
+                {v.duration_seconds ? ` · ${formatDuration(v.duration_seconds)}` : ""}
+              </p>
             </div>
             <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
               <Switch checked={v.is_active} onCheckedChange={(c) => toggleActive(v.id, c)} />
