@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
+  formatBRL,
   whatsappUrl,
   type ServiceCategory,
 } from "@/lib/categories";
