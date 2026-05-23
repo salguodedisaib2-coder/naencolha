@@ -157,7 +157,40 @@ function HomePage() {
         </div>
       </section>
 
+      {featured && featured.length > 0 && (
+        <section className="container mx-auto px-4 pt-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Flame className="w-5 h-5 text-primary" />
+            <h2 className="text-xl md:text-2xl font-bold">Mais vendidos</h2>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
+            {featured.map((v) => (
+              <Link
+                key={v.id}
+                to="/$username"
+                params={{ username: v.profiles.username }}
+                className="snap-start flex-shrink-0 w-44 md:w-56 group"
+              >
+                <div className="aspect-[3/4] rounded-xl overflow-hidden bg-card border border-border group-hover:border-primary transition">
+                  {v.thumbnail_url ? (
+                    <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="w-full h-full grid place-items-center text-muted-foreground text-sm">Sem capa</div>
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-medium line-clamp-2">{v.title}</p>
+                <p className="text-xs text-muted-foreground">por {v.profiles.full_name ?? v.profiles.username}</p>
+                <p className="text-sm text-primary font-semibold mt-1">
+                  {v.is_free ? "Grátis" : `R$ ${Number(v.price_brl).toFixed(2).replace(".", ",")}`}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="container mx-auto px-4 py-8">
+
         <div className="flex flex-wrap gap-2 mb-4">
           <ServiceChip
             label="Todas"
