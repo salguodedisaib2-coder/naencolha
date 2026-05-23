@@ -173,7 +173,7 @@ function ProfilePage() {
           <div className="space-y-5">
             {(() => {
               const rendered = new Set<ServiceCategory>();
-              const blocks: React.ReactNode[] = [];
+              const blocks: ReactNode[] = [];
               const aparenciaCats = CATEGORY_ORDER.filter((c) =>
                 c.startsWith("aparencia_"),
               );
