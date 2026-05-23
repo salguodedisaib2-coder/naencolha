@@ -502,12 +502,19 @@ function VideosTab({ userId }: { userId: string }) {
   };
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", description: "", price: "", thumbnail_url: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", price: "", thumbnail_url: "", is_free: false, resolution: "" });
   const [editUploading, setEditUploading] = useState(false);
 
   const startEdit = (v: any) => {
     setEditingId(v.id);
-    setEditForm({ title: v.title ?? "", description: v.description ?? "", price: String(v.price_brl ?? ""), thumbnail_url: v.thumbnail_url ?? "" });
+    setEditForm({
+      title: v.title ?? "",
+      description: v.description ?? "",
+      price: String(v.price_brl ?? ""),
+      thumbnail_url: v.thumbnail_url ?? "",
+      is_free: !!v.is_free,
+      resolution: v.resolution ?? "",
+    });
   };
   const handleEditThumb = async (file: File) => {
     setEditUploading(true);
@@ -526,8 +533,10 @@ function VideosTab({ userId }: { userId: string }) {
     const { error } = await supabase.from("videos").update({
       title: editForm.title,
       description: editForm.description,
-      price_brl: Number(editForm.price),
+      price_brl: editForm.is_free ? 0 : Number(editForm.price),
       thumbnail_url: editForm.thumbnail_url || null,
+      is_free: editForm.is_free,
+      resolution: editForm.resolution || null,
     }).eq("id", editingId);
     if (error) { toast.error(error.message); return; }
     toast.success("Conteúdo atualizado");
