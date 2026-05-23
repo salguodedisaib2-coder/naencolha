@@ -55,7 +55,7 @@ function ConteudosPage() {
       const { data, error } = await supabase
         .from("videos")
         .select(
-          "id, title, thumbnail_url, price_brl, is_free, purchase_count, created_at, creator_id, profiles!inner(username, full_name, is_active)",
+          "id, title, thumbnail_url, price_brl, is_free, purchase_count, created_at, content_type, creator_id, profiles!inner(username, full_name, is_active)",
         )
         .eq("is_active", true)
         .eq("profiles.is_active", true);
