@@ -60,7 +60,7 @@ function ProfilePage() {
           .order("order_index"),
         supabase
           .from("videos")
-          .select("id, title, description, thumbnail_url, price_brl")
+          .select("id, title, description, thumbnail_url, price_brl, video_url, is_free, resolution, duration_seconds")
           .eq("creator_id", profile.id)
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
