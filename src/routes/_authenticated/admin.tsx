@@ -55,17 +55,19 @@ function AdminPage() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Painel da criadora</h1>
       <Tabs defaultValue="profile">
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-6">
+        <TabsList className="grid grid-cols-3 md:grid-cols-6 mb-6">
           <TabsTrigger value="profile">Meu Perfil</TabsTrigger>
           <TabsTrigger value="services">Serviços</TabsTrigger>
           <TabsTrigger value="photos">Fotos</TabsTrigger>
           <TabsTrigger value="videos">Conteúdos</TabsTrigger>
+          <TabsTrigger value="vouchers">Vouchers</TabsTrigger>
           <TabsTrigger value="finance">Financeiro</TabsTrigger>
         </TabsList>
         <TabsContent value="profile"><ProfileTab userId={userId} /></TabsContent>
         <TabsContent value="services"><ServicesTab userId={userId} /></TabsContent>
         <TabsContent value="photos"><PhotosTab userId={userId} /></TabsContent>
         <TabsContent value="videos"><VideosTab userId={userId} /></TabsContent>
+        <TabsContent value="vouchers"><VouchersTab /></TabsContent>
         <TabsContent value="finance"><FinanceTab userId={userId} /></TabsContent>
       </Tabs>
     </div>
