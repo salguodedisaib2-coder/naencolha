@@ -8,7 +8,7 @@ import { ServiceChip } from "@/components/ServiceChip";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CATEGORY_LABELS, CATEGORY_ORDER, type ServiceCategory } from "@/lib/categories";
-import { Search } from "lucide-react";
+import { Search, Flame } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
