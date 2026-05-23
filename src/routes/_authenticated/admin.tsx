@@ -616,7 +616,23 @@ function VideosTab({ userId }: { userId: string }) {
               <div className="flex-1 space-y-3">
                 <div><Label>Título</Label><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
                 <div><Label>Descrição</Label><Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
-                <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></div>
+                <div>
+                  <Label>Resolução (opcional)</Label>
+                  <Select value={editForm.resolution || "none"} onValueChange={(val) => setEditForm({ ...editForm, resolution: val === "none" ? "" : val })}>
+                    <SelectTrigger><SelectValue placeholder="Não informar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não informar</SelectItem>
+                      {RESOLUTION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2 py-1">
+                  <Checkbox id={`edit_free_${editingId}`} checked={editForm.is_free} onCheckedChange={(c) => setEditForm({ ...editForm, is_free: !!c, price: c ? "0" : editForm.price })} />
+                  <Label htmlFor={`edit_free_${editingId}`} className="cursor-pointer font-normal">Vídeo gratuito</Label>
+                </div>
+                {!editForm.is_free && (
+                  <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></div>
+                )}
                 <div className="flex gap-2">
                   <Button onClick={saveEdit} disabled={editUploading} className="bg-gradient-primary">Salvar</Button>
                   <Button variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
@@ -629,9 +645,16 @@ function VideosTab({ userId }: { userId: string }) {
           <div key={v.id} className="flex items-center gap-4 p-4 border border-border rounded-xl hover:border-primary transition-colors cursor-pointer" onClick={() => startEdit(v)}>
             {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-24 h-16 object-cover rounded" />}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{v.title}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold truncate">{v.title}</p>
+                {v.is_free && <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">Grátis</span>}
+                {v.resolution && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{v.resolution}</span>}
+              </div>
               <p className="text-sm text-muted-foreground line-clamp-1">{v.description || "Sem descrição — clique para editar"}</p>
-              <p className="text-xs text-muted-foreground mt-1">{formatBRL(Number(v.price_brl))} · {v.purchase_count} vendas</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {v.is_free ? "Gratuito" : formatBRL(Number(v.price_brl))} · {v.purchase_count} vendas
+                {v.duration_seconds ? ` · ${formatDuration(v.duration_seconds)}` : ""}
+              </p>
             </div>
             <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
               <Switch checked={v.is_active} onCheckedChange={(c) => toggleActive(v.id, c)} />
