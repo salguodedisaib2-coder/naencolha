@@ -7,12 +7,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { getFreeVideoUrl } from "@/lib/videos.functions";
 
 interface Props {
+  id: string;
   title: string;
   description?: string | null;
   thumbnailUrl: string | null;
   price: number;
   isFree?: boolean;
-  videoUrl?: string | null;
   resolution?: string | null;
   durationSeconds?: number | null;
   onBuy: () => void;
@@ -28,39 +28,28 @@ function formatDuration(sec?: number | null) {
   return h > 0 ? `${h}:${pad(m)}:${pad(r)}` : `${m}:${pad(r)}`;
 }
 
-function extractVideosPath(url: string) {
-  const direct = "/storage/v1/object/public/videos/";
-  const signed = "/storage/v1/object/sign/videos/";
-  if (url.includes(direct)) return url.split(direct)[1]?.split("?")[0] ?? "";
-  if (url.includes(signed)) return url.split(signed)[1]?.split("?")[0] ?? "";
-  return "";
-}
-
-export function VideoCard({ title, description, thumbnailUrl, price, isFree, videoUrl, resolution, durationSeconds, onBuy }: Props) {
+export function VideoCard({ id, title, description, thumbnailUrl, price, isFree, resolution, durationSeconds, onBuy }: Props) {
   const [open, setOpen] = useState(false);
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [loadingPlay, setLoadingPlay] = useState(false);
+  const fetchFreeUrl = useServerFn(getFreeVideoUrl);
 
   useEffect(() => {
-    if (!open || !isFree || !videoUrl || playUrl) return;
+    if (!open || !isFree || playUrl) return;
     let cancelled = false;
     (async () => {
       setLoadingPlay(true);
       try {
-        const path = extractVideosPath(videoUrl);
-        if (path) {
-          const { data, error } = await supabase.storage.from("videos").createSignedUrl(path, 60 * 60);
-          if (!cancelled && !error && data) setPlayUrl(data.signedUrl);
-          else if (!cancelled) setPlayUrl(videoUrl);
-        } else if (!cancelled) {
-          setPlayUrl(videoUrl);
-        }
+        const res = await fetchFreeUrl({ data: { videoId: id } });
+        if (!cancelled && res?.url) setPlayUrl(res.url);
+      } catch (e) {
+        console.error("Falha ao carregar vídeo gratuito", e);
       } finally {
         if (!cancelled) setLoadingPlay(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [open, isFree, videoUrl, playUrl]);
+  }, [open, isFree, id, playUrl, fetchFreeUrl]);
 
   const durationLabel = formatDuration(durationSeconds);
 
