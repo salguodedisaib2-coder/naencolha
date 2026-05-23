@@ -100,7 +100,8 @@ function CreatorVideosPage() {
     }
     const nome = profile.full_name || profile.username;
     const preco = formatBRL(Number(video.price_brl));
-    const msg = `Oi ${nome}, gostaria de comprar via Pix o vídeo "${video.title}" no valor de ${preco}.`;
+    const tipo = (video as any).content_type === "photo_pack" ? "o pack de fotos" : "o vídeo";
+    const msg = `Oi ${nome}, gostaria de comprar via Pix ${tipo} "${video.title}" no valor de ${preco}.`;
     const finalUrl = `${url}${url.includes("?") ? "&" : "?"}text=${encodeURIComponent(msg)}`;
     window.open(finalUrl, "_blank", "noopener,noreferrer");
   };
