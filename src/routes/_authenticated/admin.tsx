@@ -660,6 +660,11 @@ function VideosTab({ userId }: { userId: string }) {
               </p>
             </div>
             <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
+              {!v.is_free && (
+                <Button variant="outline" size="sm" onClick={() => setVoucherVideo({ id: v.id, title: v.title, price: Number(v.price_brl) })}>
+                  <Ticket className="w-4 h-4 mr-1" /> Vouchers
+                </Button>
+              )}
               <Switch checked={v.is_active} onCheckedChange={(c) => toggleActive(v.id, c)} />
               <Button variant="ghost" size="icon" onClick={() => del(v.id)}><Trash2 className="w-4 h-4" /></Button>
             </div>
