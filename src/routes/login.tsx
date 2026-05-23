@@ -60,7 +60,7 @@ function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-hero">
       <div className="w-full max-w-md">
         <Link to="/" aria-label="NaEncolha" className="flex justify-center mb-8">
-          <Logo className="h-14 w-auto" />
+          <Logo className="h-20 md:h-24 w-auto" />
         </Link>
         <div className="bg-card border border-border rounded-2xl p-8 shadow-glow">
           <h1 className="text-2xl font-bold mb-1">
