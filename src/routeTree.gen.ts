@@ -18,6 +18,7 @@ import { Route as VoucherIndexRouteImport } from './routes/voucher.index'
 import { Route as VoucherCodeRouteImport } from './routes/voucher.$code'
 import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as UsernameConteudosRouteImport } from './routes/$username.conteudos'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -49,9 +50,9 @@ const VoucherIndexRoute = VoucherIndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const VoucherCodeRoute = VoucherCodeRouteImport.update({
-  id: '/voucher/$code',
-  path: '/voucher/$code',
-  getParentRoute: () => rootRouteImport,
+  id: '/$code',
+  path: '/$code',
+  getParentRoute: () => VoucherRoute,
 } as any)
 const AuthenticatedSuperadminRoute = AuthenticatedSuperadminRouteImport.update({
   id: '/superadmin',
@@ -63,12 +64,18 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const UsernameConteudosRoute = UsernameConteudosRouteImport.update({
+  id: '/conteudos',
+  path: '/conteudos',
+  getParentRoute: () => UsernameRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$username': typeof UsernameRoute
+  '/$username': typeof UsernameRouteWithChildren
   '/conteudos': typeof ConteudosRoute
   '/login': typeof LoginRoute
+  '/$username/conteudos': typeof UsernameConteudosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/superadmin': typeof AuthenticatedSuperadminRoute
   '/voucher/$code': typeof VoucherCodeRoute
@@ -76,9 +83,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$username': typeof UsernameRoute
+  '/$username': typeof UsernameRouteWithChildren
   '/conteudos': typeof ConteudosRoute
   '/login': typeof LoginRoute
+  '/$username/conteudos': typeof UsernameConteudosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/superadmin': typeof AuthenticatedSuperadminRoute
   '/voucher/$code': typeof VoucherCodeRoute
@@ -87,10 +95,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/$username': typeof UsernameRoute
+  '/$username': typeof UsernameRouteWithChildren
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/conteudos': typeof ConteudosRoute
   '/login': typeof LoginRoute
+  '/$username/conteudos': typeof UsernameConteudosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/superadmin': typeof AuthenticatedSuperadminRoute
   '/voucher/$code': typeof VoucherCodeRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
     | '/$username'
     | '/conteudos'
     | '/login'
+    | '/$username/conteudos'
     | '/admin'
     | '/superadmin'
     | '/voucher/$code'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/$username'
     | '/conteudos'
     | '/login'
+    | '/$username/conteudos'
     | '/admin'
     | '/superadmin'
     | '/voucher/$code'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/conteudos'
     | '/login'
+    | '/$username/conteudos'
     | '/_authenticated/admin'
     | '/_authenticated/superadmin'
     | '/voucher/$code'
@@ -132,11 +144,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  UsernameRoute: typeof UsernameRoute
+  UsernameRoute: typeof UsernameRouteWithChildren
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   ConteudosRoute: typeof ConteudosRoute
   LoginRoute: typeof LoginRoute
-  VoucherCodeRoute: typeof VoucherCodeRoute
   VoucherIndexRoute: typeof VoucherIndexRoute
 }
 
@@ -186,10 +197,10 @@ declare module '@tanstack/react-router' {
     }
     '/voucher/$code': {
       id: '/voucher/$code'
-      path: '/voucher/$code'
+      path: '/$code'
       fullPath: '/voucher/$code'
       preLoaderRoute: typeof VoucherCodeRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof VoucherRoute
     }
     '/_authenticated/superadmin': {
       id: '/_authenticated/superadmin'
@@ -205,8 +216,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/$username/conteudos': {
+      id: '/$username/conteudos'
+      path: '/conteudos'
+      fullPath: '/$username/conteudos'
+      preLoaderRoute: typeof UsernameConteudosRouteImport
+      parentRoute: typeof UsernameRoute
+    }
   }
 }
+
+interface UsernameRouteChildren {
+  UsernameConteudosRoute: typeof UsernameConteudosRoute
+}
+
+const UsernameRouteChildren: UsernameRouteChildren = {
+  UsernameConteudosRoute: UsernameConteudosRoute,
+}
+
+const UsernameRouteWithChildren = UsernameRoute._addFileChildren(
+  UsernameRouteChildren,
+)
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
@@ -224,13 +254,22 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  UsernameRoute: UsernameRoute,
+  UsernameRoute: UsernameRouteWithChildren,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   ConteudosRoute: ConteudosRoute,
   LoginRoute: LoginRoute,
-  VoucherCodeRoute: VoucherCodeRoute,
   VoucherIndexRoute: VoucherIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
