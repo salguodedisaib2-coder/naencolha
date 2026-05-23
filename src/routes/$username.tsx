@@ -15,7 +15,7 @@ import {
   whatsappUrl,
   type ServiceCategory,
 } from "@/lib/categories";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/$username")({
@@ -34,6 +34,7 @@ export const Route = createFileRoute("/$username")({
 function ProfilePage() {
   const { username } = Route.useParams();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [videoPage, setVideoPage] = useState(0);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["creator", username],
@@ -137,12 +138,13 @@ function ProfilePage() {
           <Link to="/" aria-label="NaEncolha">
             <Logo className="h-10 md:h-12 w-auto" />
           </Link>
-          <a
-            href="#conteudos-venda"
+          <Link
+            to="/$username/conteudos"
+            params={{ username }}
             className="text-sm text-muted-foreground hover:text-foreground"
           >
             Conteúdos
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -269,27 +271,101 @@ function ProfilePage() {
       />
 
       {/* Videos */}
-      {videos.length > 0 && (
-        <section id="conteudos-venda" className="container mx-auto px-4 mt-12 scroll-mt-24">
-          <h2 className="text-2xl font-bold mb-6">Conteúdos à venda</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {videos.map((v: any) => (
-              <VideoCard
-                key={v.id}
-                id={v.id}
-                title={v.title}
-                description={v.description}
-                thumbnailUrl={v.thumbnail_url}
-                price={Number(v.price_brl)}
-                isFree={!!v.is_free}
-                resolution={v.resolution}
-                durationSeconds={v.duration_seconds}
-                onBuy={() => handleBuy(v)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      {videos.length > 0 && (() => {
+        const PAGE = 3;
+        const totalPages = Math.ceil(videos.length / PAGE);
+        const page = Math.min(videoPage, totalPages - 1);
+        const start = page * PAGE;
+        const visible = videos.slice(start, start + PAGE);
+        const canPrev = page > 0;
+        const canNext = page < totalPages - 1;
+        return (
+          <section id="conteudos-venda" className="container mx-auto px-4 mt-12 scroll-mt-24">
+            <div className="flex items-center justify-between gap-2 mb-6 flex-wrap">
+              <Link
+                to="/$username/conteudos"
+                params={{ username }}
+                className="group inline-flex items-center gap-2"
+              >
+                <h2 className="text-2xl font-bold group-hover:text-primary transition">
+                  Conteúdos à venda
+                </h2>
+                <ArrowRight className="w-5 h-5 text-primary opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+              </Link>
+              <Link
+                to="/$username/conteudos"
+                params={{ username }}
+                className="text-sm text-primary hover:underline"
+              >
+                Ver todos ({videos.length})
+              </Link>
+            </div>
+            <div className="relative">
+              {canPrev && (
+                <button
+                  type="button"
+                  onClick={() => setVideoPage((p) => Math.max(0, p - 1))}
+                  aria-label="Anteriores"
+                  className="hidden md:grid place-items-center absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card border border-border hover:bg-accent shadow"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              )}
+              {canNext && (
+                <button
+                  type="button"
+                  onClick={() => setVideoPage((p) => Math.min(totalPages - 1, p + 1))}
+                  aria-label="Próximos"
+                  className="hidden md:grid place-items-center absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card border border-border hover:bg-accent shadow"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {visible.map((v: any) => (
+                  <VideoCard
+                    key={v.id}
+                    id={v.id}
+                    title={v.title}
+                    description={v.description}
+                    thumbnailUrl={v.thumbnail_url}
+                    price={Number(v.price_brl)}
+                    isFree={!!v.is_free}
+                    resolution={v.resolution}
+                    durationSeconds={v.duration_seconds}
+                    onBuy={() => handleBuy(v)}
+                  />
+                ))}
+              </div>
+              {(canPrev || canNext) && (
+                <div className="flex md:hidden justify-center gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setVideoPage((p) => Math.max(0, p - 1))}
+                    disabled={!canPrev}
+                    aria-label="Anteriores"
+                    className="grid place-items-center w-10 h-10 rounded-full bg-card border border-border disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <span className="text-xs text-muted-foreground self-center px-2">
+                    {page + 1} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setVideoPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={!canNext}
+                    aria-label="Próximos"
+                    className="grid place-items-center w-10 h-10 rounded-full bg-card border border-border disabled:opacity-40"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      })()}
 
       {photos.length === 0 && videos.length === 0 && servicesByCategory.size === 0 && (
         <div className="container mx-auto px-4 mt-12 text-center py-20 text-muted-foreground">
