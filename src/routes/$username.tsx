@@ -224,12 +224,12 @@ function ProfilePage() {
             {videos.map((v: any) => (
               <VideoCard
                 key={v.id}
+                id={v.id}
                 title={v.title}
                 description={v.description}
                 thumbnailUrl={v.thumbnail_url}
                 price={Number(v.price_brl)}
                 isFree={!!v.is_free}
-                videoUrl={v.video_url}
                 resolution={v.resolution}
                 durationSeconds={v.duration_seconds}
                 onBuy={handleBuy}
