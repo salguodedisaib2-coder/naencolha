@@ -191,7 +191,7 @@ function ConteudosPage() {
                     <img
                       src={v.thumbnail_url}
                       alt={v.title}
-                      className={`w-full h-full object-cover ${v.content_type === "photo_pack" && !v.is_free ? "blur-xl scale-110" : ""}`}
+                      className={`w-full h-full object-cover ${v.content_type === "photo_pack" && !v.is_free ? "blur-sm scale-105" : ""}`}
                       loading="lazy"
                     />
                   ) : (

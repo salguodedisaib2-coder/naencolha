@@ -71,7 +71,7 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
             <img
               src={thumbnailUrl}
               alt={title}
-              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isPack && !isFree ? "blur-xl scale-110" : ""}`}
+              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isPack && !isFree ? "blur-sm scale-105" : ""}`}
               loading="lazy"
             />
           ) : (
@@ -139,7 +139,7 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
             {isPack ? (
               thumbnailUrl ? (
                 <>
-                  <img src={thumbnailUrl} alt={title} className={`w-full h-full object-cover ${!isFree ? "blur-xl scale-110" : ""}`} />
+                  <img src={thumbnailUrl} alt={title} className={`w-full h-full object-cover ${!isFree ? "blur-sm scale-105" : ""}`} />
                   {!isFree && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="px-6 py-2 rounded-md bg-background/80 text-foreground text-lg font-extrabold tracking-[0.4em] border border-border shadow-lg backdrop-blur-sm">
