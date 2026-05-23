@@ -9,13 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VoucherRouteImport } from './routes/voucher'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as UsernameRouteImport } from './routes/$username'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VoucherCodeRouteImport } from './routes/voucher.$code'
 import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
+const VoucherRoute = VoucherRouteImport.update({
+  id: '/voucher',
+  path: '/voucher',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -35,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VoucherCodeRoute = VoucherCodeRouteImport.update({
+  id: '/$code',
+  path: '/$code',
+  getParentRoute: () => VoucherRoute,
+} as any)
 const AuthenticatedSuperadminRoute = AuthenticatedSuperadminRouteImport.update({
   id: '/superadmin',
   path: '/superadmin',
@@ -50,15 +62,19 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$username': typeof UsernameRoute
   '/login': typeof LoginRoute
+  '/voucher': typeof VoucherRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
   '/superadmin': typeof AuthenticatedSuperadminRoute
+  '/voucher/$code': typeof VoucherCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$username': typeof UsernameRoute
   '/login': typeof LoginRoute
+  '/voucher': typeof VoucherRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
   '/superadmin': typeof AuthenticatedSuperadminRoute
+  '/voucher/$code': typeof VoucherCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,22 +82,40 @@ export interface FileRoutesById {
   '/$username': typeof UsernameRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/voucher': typeof VoucherRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/superadmin': typeof AuthenticatedSuperadminRoute
+  '/voucher/$code': typeof VoucherCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$username' | '/login' | '/admin' | '/superadmin'
+  fullPaths:
+    | '/'
+    | '/$username'
+    | '/login'
+    | '/voucher'
+    | '/admin'
+    | '/superadmin'
+    | '/voucher/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$username' | '/login' | '/admin' | '/superadmin'
+  to:
+    | '/'
+    | '/$username'
+    | '/login'
+    | '/voucher'
+    | '/admin'
+    | '/superadmin'
+    | '/voucher/$code'
   id:
     | '__root__'
     | '/'
     | '/$username'
     | '/_authenticated'
     | '/login'
+    | '/voucher'
     | '/_authenticated/admin'
     | '/_authenticated/superadmin'
+    | '/voucher/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -89,10 +123,18 @@ export interface RootRouteChildren {
   UsernameRoute: typeof UsernameRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  VoucherRoute: typeof VoucherRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/voucher': {
+      id: '/voucher'
+      path: '/voucher'
+      fullPath: '/voucher'
+      preLoaderRoute: typeof VoucherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -120,6 +162,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/voucher/$code': {
+      id: '/voucher/$code'
+      path: '/$code'
+      fullPath: '/voucher/$code'
+      preLoaderRoute: typeof VoucherCodeRouteImport
+      parentRoute: typeof VoucherRoute
     }
     '/_authenticated/superadmin': {
       id: '/_authenticated/superadmin'
@@ -152,12 +201,34 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface VoucherRouteChildren {
+  VoucherCodeRoute: typeof VoucherCodeRoute
+}
+
+const VoucherRouteChildren: VoucherRouteChildren = {
+  VoucherCodeRoute: VoucherCodeRoute,
+}
+
+const VoucherRouteWithChildren =
+  VoucherRoute._addFileChildren(VoucherRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   UsernameRoute: UsernameRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  VoucherRoute: VoucherRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
