@@ -126,7 +126,7 @@ function ProfilePage() {
   const whatsapp = whatsappUrl(profile.whatsapp);
   const photoUrls = photos.map((p: any) => p.photo_url);
 
-  const handleBuy = (video: { title: string; price_brl: number | string }) => {
+  const handleBuy = (video: { title: string; price_brl: number | string; content_type?: string | null }) => {
     if (!profile.whatsapp) {
       toast.error("Esta criadora ainda não cadastrou WhatsApp.");
       return;
