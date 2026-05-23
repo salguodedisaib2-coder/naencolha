@@ -186,29 +186,18 @@ function ProfilePage() {
                 if (cat.startsWith("aparencia_")) {
                   if (!hasAparencia) return;
                   aparenciaCats.forEach((c) => rendered.add(c));
+                  const allItems = aparenciaCats.flatMap(
+                    (c) => servicesByCategory.get(c) ?? [],
+                  );
                   blocks.push(
                     <div key="aparencia">
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                         Aparência
                       </h3>
-                      <div className="space-y-3">
-                        {aparenciaCats.map((c) => {
-                          const items = servicesByCategory.get(c);
-                          if (!items || items.length === 0) return null;
-                          const sub = CATEGORY_LABELS[c].split("—")[1]?.trim() ?? "";
-                          return (
-                            <div key={c}>
-                              <div className="text-xs font-medium text-muted-foreground/80 mb-1.5">
-                                {sub}
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {items.map((s) => (
-                                  <ServiceChip key={s.id} label={s.label} active />
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className="flex flex-wrap gap-2">
+                        {allItems.map((s) => (
+                          <ServiceChip key={s.id} label={s.label} active />
+                        ))}
                       </div>
                     </div>,
                   );
