@@ -8,7 +8,7 @@ import { ServiceChip } from "@/components/ServiceChip";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CATEGORY_LABELS, CATEGORY_ORDER, type ServiceCategory } from "@/lib/categories";
-import { Search, Flame } from "lucide-react";
+import { Search, Flame, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,6 +38,7 @@ function HomePage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<ServiceCategory | null>(null);
   const [activeServices, setActiveServices] = useState<Set<string>>(new Set());
+  const [featuredPage, setFeaturedPage] = useState(0);
 
   const { data: services } = useQuery({
     queryKey: ["services"],
@@ -127,12 +128,20 @@ function HomePage() {
           <Link to="/" aria-label="NaEncolha">
             <Logo className="h-20 md:h-28 w-auto" />
           </Link>
-          <Link
-            to="/login"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Área da criadora
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              to="/conteudos"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Conteúdos
+            </Link>
+            <Link
+              to="/login"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Área da criadora
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -157,37 +166,102 @@ function HomePage() {
         </div>
       </section>
 
-      {featured && featured.length > 0 && (
-        <section className="container mx-auto px-4 pt-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Flame className="w-5 h-5 text-primary" />
-            <h2 className="text-xl md:text-2xl font-bold">Mais vendidos</h2>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
-            {featured.map((v) => (
+      {featured && featured.length > 0 && (() => {
+        const PAGE = 3;
+        const totalPages = Math.ceil(featured.length / PAGE);
+        const page = Math.min(featuredPage, totalPages - 1);
+        const start = page * PAGE;
+        const visible = featured.slice(start, start + PAGE);
+        const canPrev = page > 0;
+        const canNext = page < totalPages - 1;
+        return (
+          <section className="container mx-auto px-4 pt-8">
+            <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Flame className="w-5 h-5 text-primary" />
+                <h2 className="text-xl md:text-2xl font-bold">Mais vendidos</h2>
+              </div>
               <Link
-                key={v.id}
-                to="/$username"
-                params={{ username: v.profiles.username }}
-                className="snap-start flex-shrink-0 w-44 md:w-56 group"
+                to="/conteudos"
+                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
               >
-                <div className="aspect-[3/4] rounded-xl overflow-hidden bg-card border border-border group-hover:border-primary transition">
-                  {v.thumbnail_url ? (
-                    <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full grid place-items-center text-muted-foreground text-sm">Sem capa</div>
-                  )}
-                </div>
-                <p className="mt-2 text-sm font-medium line-clamp-2">{v.title}</p>
-                <p className="text-xs text-muted-foreground">por {v.profiles.full_name ?? v.profiles.username}</p>
-                <p className="text-sm text-primary font-semibold mt-1">
-                  {v.is_free ? "Grátis" : `R$ ${Number(v.price_brl).toFixed(2).replace(".", ",")}`}
-                </p>
+                Ver todos os conteúdos <ArrowRight className="w-4 h-4" />
               </Link>
-            ))}
-          </div>
-        </section>
-      )}
+            </div>
+            <div className="relative">
+              {canPrev && (
+                <button
+                  type="button"
+                  onClick={() => setFeaturedPage((p) => Math.max(0, p - 1))}
+                  aria-label="Anteriores"
+                  className="hidden md:grid place-items-center absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card border border-border hover:bg-accent shadow"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              )}
+              {canNext && (
+                <button
+                  type="button"
+                  onClick={() => setFeaturedPage((p) => Math.min(totalPages - 1, p + 1))}
+                  aria-label="Próximos"
+                  className="hidden md:grid place-items-center absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card border border-border hover:bg-accent shadow"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {visible.map((v) => (
+                  <Link
+                    key={v.id}
+                    to="/$username"
+                    params={{ username: v.profiles.username }}
+                    className="group"
+                  >
+                    <div className="aspect-[3/4] rounded-xl overflow-hidden bg-card border border-border group-hover:border-primary transition">
+                      {v.thumbnail_url ? (
+                        <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="w-full h-full grid place-items-center text-muted-foreground text-sm">Sem capa</div>
+                      )}
+                    </div>
+                    <p className="mt-2 text-sm font-medium line-clamp-2">{v.title}</p>
+                    <p className="text-xs text-muted-foreground">por {v.profiles.full_name ?? v.profiles.username}</p>
+                    <p className="text-sm text-primary font-semibold mt-1">
+                      {v.is_free ? "Grátis" : `R$ ${Number(v.price_brl).toFixed(2).replace(".", ",")}`}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+              {(canPrev || canNext) && (
+                <div className="flex md:hidden justify-center gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setFeaturedPage((p) => Math.max(0, p - 1))}
+                    disabled={!canPrev}
+                    aria-label="Anteriores"
+                    className="grid place-items-center w-10 h-10 rounded-full bg-card border border-border disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <span className="text-xs text-muted-foreground self-center px-2">
+                    {page + 1} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFeaturedPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={!canNext}
+                    aria-label="Próximos"
+                    className="grid place-items-center w-10 h-10 rounded-full bg-card border border-border disabled:opacity-40"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      })()}
+
 
       <section className="container mx-auto px-4 py-8">
 
