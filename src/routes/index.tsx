@@ -38,6 +38,7 @@ function HomePage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<ServiceCategory | null>(null);
   const [activeServices, setActiveServices] = useState<Set<string>>(new Set());
+  const [featuredPage, setFeaturedPage] = useState(0);
 
   const { data: services } = useQuery({
     queryKey: ["services"],
