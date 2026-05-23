@@ -422,13 +422,19 @@ function VideosTab({ userId }: { userId: string }) {
     },
   });
   const [adding, setAdding] = useState(false);
+  const [contentType, setContentType] = useState<"video" | "photo_pack">("video");
   const [form, setForm] = useState({ title: "", description: "", price: "", video_url: "", thumbnail_url: "", is_free: false, resolution: "", duration_seconds: 0 });
+  const [packPhotos, setPackPhotos] = useState<{ url: string }[]>([]);
+  const [coverIdx, setCoverIdx] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
   const [thumbManual, setThumbManual] = useState(false);
 
   const reset = () => {
     setForm({ title: "", description: "", price: "", video_url: "", thumbnail_url: "", is_free: false, resolution: "", duration_seconds: 0 });
     setThumbManual(false);
+    setContentType("video");
+    setPackPhotos([]);
+    setCoverIdx(0);
     setAdding(false);
   };
 
