@@ -181,3 +181,81 @@ export const listVouchersForVideo = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { vouchers: rows ?? [] };
   });
+
+export const listAllVouchers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    from: z.string().datetime().optional(),
+    to: z.string().datetime().optional(),
+    videoId: z.string().uuid().optional(),
+    status: z.enum(["all", "active", "revoked"]).optional(),
+    search: z.string().trim().max(120).optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    let q = supabaseAdmin
+      .from("video_vouchers")
+      .select("id, code, customer_label, amount_paid, is_active, created_at, last_used_at, use_count, video_id, videos(id, title, thumbnail_url)")
+      .eq("creator_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (data.from) q = q.gte("created_at", data.from);
+    if (data.to) q = q.lte("created_at", data.to);
+    if (data.videoId) q = q.eq("video_id", data.videoId);
+    if (data.status === "active") q = q.eq("is_active", true);
+    if (data.status === "revoked") q = q.eq("is_active", false);
+    if (data.search) {
+      const s = data.search.trim();
+      q = q.or(`code.ilike.%${s}%,customer_label.ilike.%${s}%`);
+    }
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    return { vouchers: rows ?? [] };
+  });
+
+export const getVoucherStats = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    from: z.string().datetime().optional(),
+    to: z.string().datetime().optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    let q = supabaseAdmin
+      .from("video_vouchers")
+      .select("amount_paid, video_id, videos(id, title)")
+      .eq("creator_id", context.userId);
+    if (data.from) q = q.gte("created_at", data.from);
+    if (data.to) q = q.lte("created_at", data.to);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const list = rows ?? [];
+    const count = list.length;
+    const revenue = list.reduce((acc: number, r: any) => acc + (Number(r.amount_paid) || 0), 0);
+    const byVideo = new Map<string, { videoId: string; title: string; count: number; revenue: number }>();
+    for (const r of list as any[]) {
+      const vid = r.video_id;
+      const title = r.videos?.title ?? "(vídeo removido)";
+      const cur = byVideo.get(vid) ?? { videoId: vid, title, count: 0, revenue: 0 };
+      cur.count += 1;
+      cur.revenue += Number(r.amount_paid) || 0;
+      byVideo.set(vid, cur);
+    }
+    const topVideos = Array.from(byVideo.values()).sort((a, b) => b.count - a.count).slice(0, 5);
+    return { count, revenue, topVideos };
+  });
+
+export const setVideoFeatured = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    videoId: z.string().uuid(),
+    featured: z.boolean(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await supabaseAdmin
+      .from("videos")
+      .update({ is_featured: data.featured })
+      .eq("id", data.videoId)
+      .eq("creator_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

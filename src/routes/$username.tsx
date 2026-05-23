@@ -135,7 +135,7 @@ function ProfilePage() {
       <header className="border-b border-border bg-card/40 backdrop-blur sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" aria-label="NaEncolha">
-            <Logo className="h-10 md:h-12 w-auto" />
+            <Logo className="h-14 md:h-20 w-auto" />
           </Link>
         </div>
       </header>

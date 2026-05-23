@@ -1,79 +1,56 @@
-## Sistema de Voucher por Vídeo
+## 1. Aba "Vouchers" no painel da criadora (auditoria de vendas)
 
-Fluxo end-to-end simples: a acompanhante gera um código no admin, envia pelo WhatsApp; o cliente digita o código no site e libera assistir + baixar aquele vídeo específico.
+Hoje os vouchers só aparecem dentro do diálogo de cada vídeo. Criar uma visão geral em `src/routes/_authenticated/admin.tsx` como nova aba ao lado de Conteúdos/Financeiro.
 
-### 1. Banco de dados
+### Nova aba "Vouchers"
+- Tabela única com **todos os vouchers da criadora** (mais recentes primeiro), colunas:
+  - Código
+  - Vídeo (título, com miniatura pequena)
+  - Comprador (`customer_label` — nome/telefone que ela anotou)
+  - Valor recebido
+  - Criado em
+  - Último uso + nº de usos
+  - Status (ativo/revogado) com botão "Revogar"
 
-Nova tabela `video_vouchers`:
-- `id` (uuid)
-- `video_id` (uuid) — vídeo liberado
-- `creator_id` (uuid) — dona do vídeo (para RLS)
-- `code` (text, único) — código curto tipo `MIRE-7K2X` (8 chars, sem caracteres confusos como O/0/I/1)
-- `customer_label` (text, opcional) — nome ou telefone que a acompanhante anota pra se lembrar de quem é
-- `amount_paid` (numeric, opcional) — valor recebido
-- `is_active` (bool, default true) — pode ser revogado
-- `created_at`, `last_used_at`, `use_count`
+### Filtros no topo
+- Período: **Hoje / 7 dias / Este mês / Tudo** (default: Este mês)
+- Busca por texto (código ou comprador)
+- Filtro por vídeo (dropdown com seus vídeos)
+- Filtro por status (ativos / revogados / todos)
 
-RLS:
-- Acompanhante (creator) gerencia apenas seus próprios vouchers
-- Validação/uso de voucher acontece via server function com `supabaseAdmin` (cliente não autenticado)
+### Cards de resumo (acima da tabela)
+Calculados em cima dos filtros ativos:
+- **Vouchers emitidos** (contagem)
+- **Receita total** (soma de `amount_paid`)
+- **Vídeo mais vendido no período** (top 1, com link pro vídeo)
 
-### 2. Admin — geração de voucher
+### Ranking "Mais vendidos"
+Pequeno bloco abaixo dos cards: top 5 vídeos por nº de vouchers no período, com botão **"Destacar na home"** em cada um (marca `is_featured=true` no vídeo — flag nova, ver abaixo).
 
-Em `src/routes/_authenticated/admin.tsx`, em cada card de vídeo já listado:
-- Botão **"Gerar voucher"**
-- Abre um pequeno modal com:
-  - Campo opcional "Quem comprou" (nome/telefone — só pra organização dela)
-  - Campo opcional "Valor recebido"
-  - Botão "Gerar código"
-- Ao gerar: mostra o código grande (ex.: `MIRE-7K2X`), com botão **"Copiar"** e **"Enviar no WhatsApp"** que abre o WhatsApp dela com mensagem pronta tipo:
-  > Aqui está seu voucher: **MIRE-7K2X**
-  > Acesse https://naencolha.com/voucher e digite o código pra assistir e baixar.
-- Lista de vouchers já emitidos por vídeo (código, comprador, status, último uso) com botão **"Revogar"**
+### Destaque na home
+- Adicionar coluna `is_featured boolean default false` em `videos` (migração).
+- Em `src/routes/index.tsx`, se existirem vídeos com `is_featured=true`, mostrar uma faixa **"Mais vendidos"** no topo (carrossel horizontal de `VideoCard`).
+- Sem destaque manual, a home continua igual.
 
-### 3. Cliente — usar voucher
+### Dados (server functions novas em `src/lib/vouchers.functions.ts`)
+- `listAllVouchers({ from?, to?, videoId?, status?, search? })` — protegida, retorna vouchers da criadora com join do título/thumbnail do vídeo.
+- `getVoucherStats({ from?, to? })` — protegida, retorna `{ count, revenue, topVideos: [{videoId, title, count, revenue}] }`.
+- `setVideoFeatured({ videoId, featured })` — protegida, valida posse e atualiza `is_featured`.
 
-Duas portas de entrada (a mesma tela):
-1. Nova rota pública `/voucher` — página dedicada com campo "Digite seu voucher"
-2. Botão **"Já tenho voucher"** no `VideoCard` (ao lado de "Comprar via PIX") — abre o mesmo modal
+Tudo já filtrado por `creator_id = auth.uid()` via RLS existente.
 
-Comportamento:
-- Cliente digita o código → server function valida
-- Se válido e ativo: redireciona pra `/voucher/{code}` (player) — mostra vídeo no player com controles nativos, botão **"Baixar vídeo"** (link de download direto), título do vídeo e nome da acompanhante
-- Voucher é **reutilizável** — o cliente pode voltar e rever quando quiser (registra `last_used_at` e incrementa `use_count`)
-- Se inválido/revogado: mensagem clara "Voucher inválido. Confirme com a acompanhante."
+## 2. Logo maior no header
 
-### 4. Server functions (TanStack)
+Aumentar nas 3 telas que usam `Logo`:
+- `src/routes/index.tsx`: `h-10 md:h-12` → `h-14 md:h-20`
+- `src/routes/$username.tsx`: `h-10 md:h-12` → `h-14 md:h-20`
+- `src/routes/login.tsx`: `h-14` → `h-20 md:h-24`
 
-`src/lib/vouchers.functions.ts`:
-- `createVoucher({ videoId, customerLabel?, amountPaid? })` — protegida com `requireSupabaseAuth`, valida que o vídeo pertence ao usuário, gera código único (com retry se colidir)
-- `revokeVoucher({ voucherId })` — protegida, marca `is_active=false`
-- `redeemVoucher({ code })` — pública, sem auth, usa `supabaseAdmin`: valida código, retorna URL assinada do vídeo (10 min) + metadados (título, capa, nome da criadora) + URL de download (assinada, 1 hora, com `?download=true`)
+## Arquivos afetados
 
-### 5. Por que esse design é simples e prático
-
-**Pra acompanhante:**
-- 2 cliques no admin → código pronto → 1 clique pra mandar no WhatsApp
-- Não precisa cadastrar cliente nem gerenciar conta
-- Pode revogar se houver problema
-
-**Pro cliente:**
-- Não precisa criar conta, login, senha
-- Digita o código uma vez e acessa quando quiser
-- Funciona em qualquer dispositivo
-
-### Detalhes técnicos
-
-- Código gerado por server function (3 chars do username + `-` + 4 chars aleatórios maiúsculos do alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`)
-- URL assinada do bucket privado `videos` (já existe) — `createSignedUrl(path, 600)` pra streaming, `createSignedUrl(path, 3600, { download: true })` pro botão de baixar
-- Sem expiração de voucher por padrão (acompanhante revoga manualmente se precisar)
-- Sem cobrança automática — o controle de pagamento continua manual via WhatsApp (a acompanhante só gera o voucher depois de confirmar o PIX recebido)
-
-### Arquivos afetados
-
-- Migração nova (`video_vouchers` + RLS)
-- `src/lib/vouchers.functions.ts` (novo)
-- `src/routes/_authenticated/admin.tsx` (botão "Gerar voucher" + modal + lista)
-- `src/components/VideoCard.tsx` (botão "Já tenho voucher")
-- `src/routes/voucher.tsx` (página de redenção — entrada do código)
-- `src/routes/voucher.$code.tsx` (player + download)
+- Migração nova: `videos.is_featured`
+- `src/lib/vouchers.functions.ts` (3 funções novas)
+- `src/routes/_authenticated/admin.tsx` (nova aba `VouchersTab`)
+- `src/routes/index.tsx` (faixa "Mais vendidos" + logo)
+- `src/routes/$username.tsx` (logo)
+- `src/routes/login.tsx` (logo)

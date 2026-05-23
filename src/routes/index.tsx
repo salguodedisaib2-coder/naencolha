@@ -8,7 +8,7 @@ import { ServiceChip } from "@/components/ServiceChip";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CATEGORY_LABELS, CATEGORY_ORDER, type ServiceCategory } from "@/lib/categories";
-import { Search } from "lucide-react";
+import { Search, Flame } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -67,6 +67,23 @@ function HomePage() {
     },
   });
 
+  const { data: featured } = useQuery({
+    queryKey: ["featured-videos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("videos")
+        .select("id, title, thumbnail_url, price_brl, is_free, creator_id, profiles!inner(username, full_name, is_active)")
+        .eq("is_featured", true)
+        .eq("is_active", true)
+        .eq("profiles.is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
+
   const filtered = useMemo(() => {
     if (!creators) return [];
     return creators.filter((c) => {
@@ -108,7 +125,7 @@ function HomePage() {
       <header className="border-b border-border bg-card/40 backdrop-blur sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" aria-label="NaEncolha">
-            <Logo className="h-10 md:h-12 w-auto" />
+            <Logo className="h-14 md:h-20 w-auto" />
           </Link>
           <Link
             to="/login"
@@ -140,7 +157,40 @@ function HomePage() {
         </div>
       </section>
 
+      {featured && featured.length > 0 && (
+        <section className="container mx-auto px-4 pt-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Flame className="w-5 h-5 text-primary" />
+            <h2 className="text-xl md:text-2xl font-bold">Mais vendidos</h2>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
+            {featured.map((v) => (
+              <Link
+                key={v.id}
+                to="/$username"
+                params={{ username: v.profiles.username }}
+                className="snap-start flex-shrink-0 w-44 md:w-56 group"
+              >
+                <div className="aspect-[3/4] rounded-xl overflow-hidden bg-card border border-border group-hover:border-primary transition">
+                  {v.thumbnail_url ? (
+                    <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="w-full h-full grid place-items-center text-muted-foreground text-sm">Sem capa</div>
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-medium line-clamp-2">{v.title}</p>
+                <p className="text-xs text-muted-foreground">por {v.profiles.full_name ?? v.profiles.username}</p>
+                <p className="text-sm text-primary font-semibold mt-1">
+                  {v.is_free ? "Grátis" : `R$ ${Number(v.price_brl).toFixed(2).replace(".", ",")}`}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="container mx-auto px-4 py-8">
+
         <div className="flex flex-wrap gap-2 mb-4">
           <ServiceChip
             label="Todas"
