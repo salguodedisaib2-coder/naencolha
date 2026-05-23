@@ -112,10 +112,21 @@ function ProfilePage() {
   const whatsapp = whatsappUrl(profile.whatsapp);
   const photoUrls = photos.map((p: any) => p.photo_url);
 
-  const handleBuy = () => {
-    toast.info("Pagamento via PIX em breve!", {
-      description: "Integração com gateway será adicionada no próximo ciclo.",
-    });
+  const handleBuy = (video: { title: string; price_brl: number | string }) => {
+    if (!profile.whatsapp) {
+      toast.error("Esta criadora ainda não cadastrou WhatsApp.");
+      return;
+    }
+    const url = whatsappUrl(profile.whatsapp);
+    if (!url) {
+      toast.error("WhatsApp inválido.");
+      return;
+    }
+    const nome = profile.full_name || profile.username;
+    const preco = formatBRL(Number(video.price_brl));
+    const msg = `Oi ${nome}, gostaria de comprar via Pix o vídeo "${video.title}" no valor de ${preco}.`;
+    const finalUrl = `${url}${url.includes("?") ? "&" : "?"}text=${encodeURIComponent(msg)}`;
+    window.open(finalUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
