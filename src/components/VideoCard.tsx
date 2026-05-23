@@ -101,6 +101,16 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
           >
             {isFree ? "Assistir grátis" : "Comprar via PIX"}
           </Button>
+          {!isFree && (
+            <Link
+              to="/voucher"
+              onClick={(e) => e.stopPropagation()}
+              className="mt-2 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Ticket className="w-3.5 h-3.5" />
+              Já tenho voucher
+            </Link>
+          )}
         </div>
       </div>
 
