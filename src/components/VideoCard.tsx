@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatBRL } from "@/lib/categories";
-import { Play } from "lucide-react";
+import { Play, Ticket } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getFreeVideoUrl } from "@/lib/videos.functions";
 
@@ -100,6 +101,16 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
           >
             {isFree ? "Assistir grátis" : "Comprar via PIX"}
           </Button>
+          {!isFree && (
+            <Link
+              to="/voucher"
+              onClick={(e) => e.stopPropagation()}
+              className="mt-2 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Ticket className="w-3.5 h-3.5" />
+              Já tenho voucher
+            </Link>
+          )}
         </div>
       </div>
 

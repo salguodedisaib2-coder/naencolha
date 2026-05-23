@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ServiceChip } from "@/components/ServiceChip";
 import { CATEGORY_LABELS, CATEGORY_ORDER, formatBRL, type ServiceCategory } from "@/lib/categories";
+import { createVoucher, revokeVoucher, listVouchersForVideo } from "@/lib/vouchers.functions";
 import { toast } from "sonner";
-import { Trash2, Upload } from "lucide-react";
+import { Trash2, Upload, Ticket, Copy, MessageCircle } from "lucide-react";
 
 const RESOLUTION_OPTIONS = [
   { value: "480p", label: "480p (SD)" },
@@ -504,6 +507,15 @@ function VideosTab({ userId }: { userId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: "", description: "", price: "", thumbnail_url: "", is_free: false, resolution: "" });
   const [editUploading, setEditUploading] = useState(false);
+  const [voucherVideo, setVoucherVideo] = useState<{ id: string; title: string; price: number } | null>(null);
+
+  const profileQ = useQuery({
+    queryKey: ["my-profile-min", userId],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("whatsapp, username").eq("id", userId).maybeSingle();
+      return data;
+    },
+  });
 
   const startEdit = (v: any) => {
     setEditingId(v.id);
@@ -657,13 +669,200 @@ function VideosTab({ userId }: { userId: string }) {
               </p>
             </div>
             <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
+              {!v.is_free && (
+                <Button variant="outline" size="sm" onClick={() => setVoucherVideo({ id: v.id, title: v.title, price: Number(v.price_brl) })}>
+                  <Ticket className="w-4 h-4 mr-1" /> Vouchers
+                </Button>
+              )}
               <Switch checked={v.is_active} onCheckedChange={(c) => toggleActive(v.id, c)} />
               <Button variant="ghost" size="icon" onClick={() => del(v.id)}><Trash2 className="w-4 h-4" /></Button>
             </div>
           </div>
         ))}
       </div>
+
+      {voucherVideo && (
+        <VoucherDialog
+          video={voucherVideo}
+          whatsapp={profileQ.data?.whatsapp ?? null}
+          username={profileQ.data?.username ?? null}
+          onClose={() => setVoucherVideo(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function VoucherDialog({
+  video,
+  whatsapp,
+  username,
+  onClose,
+}: {
+  video: { id: string; title: string; price: number };
+  whatsapp: string | null;
+  username: string | null;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const create = useServerFn(createVoucher);
+  const revoke = useServerFn(revokeVoucher);
+  const list = useServerFn(listVouchersForVideo);
+
+  const [customer, setCustomer] = useState("");
+  const [amount, setAmount] = useState(String(video.price ?? ""));
+  const [creating, setCreating] = useState(false);
+  const [lastCreated, setLastCreated] = useState<string | null>(null);
+
+  const { data: vouchers, refetch } = useQuery({
+    queryKey: ["vouchers", video.id],
+    queryFn: () => list({ data: { videoId: video.id } }),
+  });
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const res = await create({
+        data: {
+          videoId: video.id,
+          customerLabel: customer.trim() || undefined,
+          amountPaid: amount ? Number(amount) : undefined,
+        },
+      });
+      setLastCreated(res.code);
+      setCustomer("");
+      toast.success("Voucher gerado!");
+      refetch();
+      qc.invalidateQueries({ queryKey: ["vouchers", video.id] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleRevoke = async (id: string) => {
+    if (!confirm("Revogar este voucher? O cliente não conseguirá mais assistir.")) return;
+    try {
+      await revoke({ data: { voucherId: id } });
+      toast.success("Voucher revogado");
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text).then(
+      () => toast.success("Copiado!"),
+      () => toast.error("Não foi possível copiar"),
+    );
+  };
+
+  const buildVoucherUrl = (code: string) => {
+    if (typeof window === "undefined") return `/voucher/${code}`;
+    return `${window.location.origin}/voucher/${code}`;
+  };
+
+  const sendWhatsApp = (code: string) => {
+    if (!whatsapp) {
+      toast.error("Cadastre seu WhatsApp no perfil primeiro.");
+      return;
+    }
+    const digits = whatsapp.replace(/\D/g, "");
+    const full = digits.startsWith("55") ? digits : `55${digits}`;
+    const url = buildVoucherUrl(code);
+    const msg = `Aqui está seu voucher do vídeo "${video.title}":\n\nCódigo: ${code}\nAcesse: ${url}\n\nÉ só clicar no link ou digitar o código no site para assistir e baixar.`;
+    window.open(`https://wa.me/${full}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Vouchers — {video.title}</DialogTitle>
+          <DialogDescription>
+            Gere um voucher após confirmar o pagamento via PIX. Envie o código pelo WhatsApp e o cliente poderá assistir e baixar o vídeo.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-2">
+          <div className="border border-border rounded-lg p-4 space-y-3">
+            <div>
+              <Label>Quem comprou (opcional)</Label>
+              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Nome ou telefone do cliente" />
+            </div>
+            <div>
+              <Label>Valor recebido (R$, opcional)</Label>
+              <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <Button onClick={handleCreate} disabled={creating} className="w-full bg-gradient-primary">
+              <Ticket className="w-4 h-4 mr-2" />
+              {creating ? "Gerando..." : "Gerar voucher"}
+            </Button>
+          </div>
+
+          {lastCreated && (
+            <div className="rounded-lg border-2 border-primary bg-primary/5 p-4 text-center">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Voucher gerado</p>
+              <p className="text-3xl font-mono font-bold tracking-wider text-primary mb-3">{lastCreated}</p>
+              <div className="flex gap-2 justify-center">
+                <Button size="sm" variant="outline" onClick={() => copy(lastCreated)}>
+                  <Copy className="w-3.5 h-3.5 mr-1" /> Copiar código
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => copy(buildVoucherUrl(lastCreated))}>
+                  <Copy className="w-3.5 h-3.5 mr-1" /> Copiar link
+                </Button>
+                <Button size="sm" className="bg-gradient-primary" onClick={() => sendWhatsApp(lastCreated)}>
+                  <MessageCircle className="w-3.5 h-3.5 mr-1" /> WhatsApp
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <h4 className="text-sm font-semibold mb-2">Vouchers emitidos ({vouchers?.vouchers.length ?? 0})</h4>
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {vouchers?.vouchers.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhum voucher emitido ainda.</p>
+              )}
+              {vouchers?.vouchers.map((v: any) => (
+                <div key={v.id} className={`border rounded-lg p-3 ${v.is_active ? "border-border" : "border-border opacity-60"}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono font-bold text-primary">{v.code}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {v.customer_label || "Sem identificação"}
+                        {v.amount_paid != null && ` · ${formatBRL(Number(v.amount_paid))}`}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {v.is_active ? "Ativo" : "Revogado"} · usado {v.use_count}x
+                        {v.last_used_at && ` · último: ${new Date(v.last_used_at).toLocaleDateString("pt-BR")}`}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <Button size="sm" variant="ghost" onClick={() => copy(v.code)} title="Copiar código">
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                      {v.is_active && (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => sendWhatsApp(v.code)} title="Enviar no WhatsApp">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleRevoke(v.id)} title="Revogar">
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

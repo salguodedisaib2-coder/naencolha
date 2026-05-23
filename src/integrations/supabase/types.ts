@@ -251,6 +251,45 @@ export type Database = {
         }
         Relationships: []
       }
+      video_vouchers: {
+        Row: {
+          amount_paid: number | null
+          code: string
+          created_at: string
+          creator_id: string
+          customer_label: string | null
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          use_count: number
+          video_id: string
+        }
+        Insert: {
+          amount_paid?: number | null
+          code: string
+          created_at?: string
+          creator_id: string
+          customer_label?: string | null
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          use_count?: number
+          video_id: string
+        }
+        Update: {
+          amount_paid?: number | null
+          code?: string
+          created_at?: string
+          creator_id?: string
+          customer_label?: string | null
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          use_count?: number
+          video_id?: string
+        }
+        Relationships: []
+      }
       videos: {
         Row: {
           created_at: string
