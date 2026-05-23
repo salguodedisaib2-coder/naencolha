@@ -50,9 +50,9 @@ const VoucherIndexRoute = VoucherIndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const VoucherCodeRoute = VoucherCodeRouteImport.update({
-  id: '/$code',
-  path: '/$code',
-  getParentRoute: () => VoucherRoute,
+  id: '/voucher/$code',
+  path: '/voucher/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSuperadminRoute = AuthenticatedSuperadminRouteImport.update({
   id: '/superadmin',
@@ -148,6 +148,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   ConteudosRoute: typeof ConteudosRoute
   LoginRoute: typeof LoginRoute
+  VoucherCodeRoute: typeof VoucherCodeRoute
   VoucherIndexRoute: typeof VoucherIndexRoute
 }
 
@@ -197,10 +198,10 @@ declare module '@tanstack/react-router' {
     }
     '/voucher/$code': {
       id: '/voucher/$code'
-      path: '/$code'
+      path: '/voucher/$code'
       fullPath: '/voucher/$code'
       preLoaderRoute: typeof VoucherCodeRouteImport
-      parentRoute: typeof VoucherRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/superadmin': {
       id: '/_authenticated/superadmin'
@@ -258,18 +259,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   ConteudosRoute: ConteudosRoute,
   LoginRoute: LoginRoute,
+  VoucherCodeRoute: VoucherCodeRoute,
   VoucherIndexRoute: VoucherIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

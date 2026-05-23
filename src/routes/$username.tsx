@@ -138,12 +138,13 @@ function ProfilePage() {
           <Link to="/" aria-label="NaEncolha">
             <Logo className="h-10 md:h-12 w-auto" />
           </Link>
-          <a
-            href="#conteudos-venda"
+          <Link
+            to="/$username/conteudos"
+            params={{ username }}
             className="text-sm text-muted-foreground hover:text-foreground"
           >
             Conteúdos
-          </a>
+          </Link>
         </div>
       </header>
 
