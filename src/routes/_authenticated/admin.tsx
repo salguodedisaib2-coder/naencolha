@@ -894,6 +894,9 @@ function VideosTab({ userId }: { userId: string }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-semibold truncate">{v.title}</p>
+                <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">
+                  {v.content_type === "photo_pack" ? "Pack de fotos" : "Vídeo"}
+                </span>
                 {v.is_free && <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">Grátis</span>}
                 {v.resolution && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{v.resolution}</span>}
               </div>
