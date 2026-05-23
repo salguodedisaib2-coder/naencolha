@@ -73,7 +73,7 @@ function HomePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("videos")
-        .select("id, title, thumbnail_url, price_brl, is_free, creator_id, profiles!inner(username, full_name, is_active)")
+        .select("id, title, thumbnail_url, price_brl, is_free, content_type, creator_id, profiles!inner(username, full_name, is_active)")
         .eq("is_featured", true)
         .eq("is_active", true)
         .eq("profiles.is_active", true)
@@ -217,12 +217,27 @@ function HomePage() {
                     params={{ username: v.profiles.username }}
                     className="group"
                   >
-                    <div className="aspect-[3/4] rounded-xl overflow-hidden bg-card border border-border group-hover:border-primary transition">
+                    <div className="aspect-[3/4] rounded-xl overflow-hidden bg-card border border-border group-hover:border-primary transition relative">
                       {v.thumbnail_url ? (
-                        <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
+                        <img
+                          src={v.thumbnail_url}
+                          alt={v.title}
+                          className={`w-full h-full object-cover ${v.content_type === "photo_pack" && !v.is_free ? "blur-xl scale-110" : ""}`}
+                          loading="lazy"
+                        />
                       ) : (
                         <div className="w-full h-full grid place-items-center text-muted-foreground text-sm">Sem capa</div>
                       )}
+                      {v.content_type === "photo_pack" && !v.is_free && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="px-3 py-1 rounded-md bg-background/80 text-foreground text-xs font-extrabold tracking-[0.3em] border border-border shadow backdrop-blur-sm">
+                            CENSURADO
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-background/80 text-foreground text-[10px] font-bold tracking-wide backdrop-blur-sm">
+                        {v.content_type === "photo_pack" ? "PACK" : "VÍDEO"}
+                      </div>
                     </div>
                     <p className="mt-2 text-sm font-medium line-clamp-2">{v.title}</p>
                     <p className="text-xs text-muted-foreground">por {v.profiles.full_name ?? v.profiles.username}</p>

@@ -124,7 +124,7 @@ export const redeemVoucher = createServerFn({ method: "POST" })
       .eq("id", voucher.creator_id)
       .maybeSingle();
 
-    const path = extractVideosPath(video.video_url);
+    const path = video.video_url ? extractVideosPath(video.video_url) : "";
     if (!path) throw new Error("Caminho do vídeo inválido");
 
     const [streamRes, downloadRes] = await Promise.all([

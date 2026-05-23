@@ -62,13 +62,25 @@ function ProfilePage() {
           .order("order_index"),
         supabase
           .from("videos")
-          .select("id, title, description, thumbnail_url, price_brl, video_url, is_free, resolution, duration_seconds")
+          .select("id, title, description, thumbnail_url, price_brl, video_url, is_free, resolution, duration_seconds, content_type")
           .eq("creator_id", profile.id)
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
       ]);
 
-      return { profile, services: services ?? [], photos: photos ?? [], videos: videos ?? [] };
+      const packIds = (videos ?? []).filter((v: any) => v.content_type === "photo_pack").map((v: any) => v.id);
+      const counts: Record<string, number> = {};
+      if (packIds.length > 0) {
+        const { data: pcs } = await supabase.from("pack_photos").select("video_id").in("video_id", packIds);
+        for (const r of pcs ?? []) counts[r.video_id] = (counts[r.video_id] ?? 0) + 1;
+      }
+
+      return {
+        profile,
+        services: services ?? [],
+        photos: photos ?? [],
+        videos: (videos ?? []).map((v: any) => ({ ...v, photo_count: counts[v.id] ?? 0 })),
+      };
     },
     retry: false,
   });
@@ -114,7 +126,7 @@ function ProfilePage() {
   const whatsapp = whatsappUrl(profile.whatsapp);
   const photoUrls = photos.map((p: any) => p.photo_url);
 
-  const handleBuy = (video: { title: string; price_brl: number | string }) => {
+  const handleBuy = (video: { title: string; price_brl: number | string; content_type?: string | null }) => {
     if (!profile.whatsapp) {
       toast.error("Esta criadora ainda não cadastrou WhatsApp.");
       return;
@@ -126,7 +138,8 @@ function ProfilePage() {
     }
     const nome = profile.full_name || profile.username;
     const preco = formatBRL(Number(video.price_brl));
-    const msg = `Oi ${nome}, gostaria de comprar via Pix o vídeo "${video.title}" no valor de ${preco}.`;
+    const tipo = video.content_type === "photo_pack" ? "o pack de fotos" : "o vídeo";
+    const msg = `Oi ${nome}, gostaria de comprar via Pix ${tipo} "${video.title}" no valor de ${preco}.`;
     const finalUrl = `${url}${url.includes("?") ? "&" : "?"}text=${encodeURIComponent(msg)}`;
     window.open(finalUrl, "_blank", "noopener,noreferrer");
   };
@@ -333,6 +346,8 @@ function ProfilePage() {
                     isFree={!!v.is_free}
                     resolution={v.resolution}
                     durationSeconds={v.duration_seconds}
+                    contentType={v.content_type}
+                    photoCount={v.photo_count}
                     onBuy={() => handleBuy(v)}
                   />
                 ))}
