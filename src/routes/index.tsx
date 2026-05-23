@@ -67,6 +67,23 @@ function HomePage() {
     },
   });
 
+  const { data: featured } = useQuery({
+    queryKey: ["featured-videos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("videos")
+        .select("id, title, thumbnail_url, price_brl, is_free, creator_id, profiles!inner(username, full_name, is_active)")
+        .eq("is_featured", true)
+        .eq("is_active", true)
+        .eq("profiles.is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
+
   const filtered = useMemo(() => {
     if (!creators) return [];
     return creators.filter((c) => {
