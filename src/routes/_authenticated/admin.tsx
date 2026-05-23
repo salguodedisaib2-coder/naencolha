@@ -507,6 +507,15 @@ function VideosTab({ userId }: { userId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: "", description: "", price: "", thumbnail_url: "", is_free: false, resolution: "" });
   const [editUploading, setEditUploading] = useState(false);
+  const [voucherVideo, setVoucherVideo] = useState<{ id: string; title: string; price: number } | null>(null);
+
+  const profileQ = useQuery({
+    queryKey: ["my-profile-min", userId],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("whatsapp, username").eq("id", userId).maybeSingle();
+      return data;
+    },
+  });
 
   const startEdit = (v: any) => {
     setEditingId(v.id);
