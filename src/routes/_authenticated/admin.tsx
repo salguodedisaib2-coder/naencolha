@@ -14,9 +14,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ServiceChip } from "@/components/ServiceChip";
 import { CATEGORY_LABELS, CATEGORY_ORDER, formatBRL, type ServiceCategory } from "@/lib/categories";
-import { createVoucher, revokeVoucher, listVouchersForVideo } from "@/lib/vouchers.functions";
+import { createVoucher, revokeVoucher, listVouchersForVideo, listAllVouchers, getVoucherStats, setVideoFeatured } from "@/lib/vouchers.functions";
 import { toast } from "sonner";
-import { Trash2, Upload, Ticket, Copy, MessageCircle } from "lucide-react";
+import { Trash2, Upload, Ticket, Copy, MessageCircle, Flame, TrendingUp } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const RESOLUTION_OPTIONS = [
   { value: "480p", label: "480p (SD)" },
