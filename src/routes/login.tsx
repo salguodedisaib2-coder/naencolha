@@ -40,6 +40,16 @@ function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "signup") {
+      if (!confirmAge) {
+        toast.error("Você precisa confirmar que tem 18 anos ou mais.");
+        return;
+      }
+      if (!acceptPrivacy || !acceptResponsibility) {
+        toast.error("Aceite os termos para continuar.");
+        return;
+      }
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
