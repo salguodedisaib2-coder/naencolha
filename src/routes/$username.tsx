@@ -37,6 +37,7 @@ function ProfilePage() {
   const { username } = Route.useParams();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [videoPage, setVideoPage] = useState(0);
+  const trackView = useServerFn(recordPageView);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["creator", username],
