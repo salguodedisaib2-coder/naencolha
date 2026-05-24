@@ -71,11 +71,16 @@ function ProfilePage() {
           .order("created_at", { ascending: false }),
       ]);
 
-      const packIds = (videos ?? []).filter((v: any) => v.content_type === "photo_pack").map((v: any) => v.id);
+      const photoPackIds = (videos ?? []).filter((v: any) => v.content_type === "photo_pack").map((v: any) => v.id);
+      const videoPackIds = (videos ?? []).filter((v: any) => v.content_type === "video_pack").map((v: any) => v.id);
       const counts: Record<string, number> = {};
-      if (packIds.length > 0) {
-        const { data: pcs } = await supabase.from("pack_photos").select("video_id").in("video_id", packIds);
+      if (photoPackIds.length > 0) {
+        const { data: pcs } = await supabase.from("pack_photos").select("video_id").in("video_id", photoPackIds);
         for (const r of pcs ?? []) counts[r.video_id] = (counts[r.video_id] ?? 0) + 1;
+      }
+      if (videoPackIds.length > 0) {
+        const { data: pvs } = await supabase.from("pack_videos").select("video_id").in("video_id", videoPackIds);
+        for (const r of pvs ?? []) counts[r.video_id] = (counts[r.video_id] ?? 0) + 1;
       }
 
       return {
