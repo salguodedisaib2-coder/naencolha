@@ -87,7 +87,8 @@ export async function ensureH264(
     await ff.deleteFile(inputName).catch(() => {});
     await ff.deleteFile(outputName).catch(() => {});
     const newName = file.name.replace(/\.[^.]+$/, "") + "_h264.mp4";
-    return new File([data], newName, { type: "video/mp4" });
+    const buf = new Uint8Array(data).buffer;
+    return new File([buf], newName, { type: "video/mp4" });
   } finally {
     ff.off("progress", onProg);
   }
