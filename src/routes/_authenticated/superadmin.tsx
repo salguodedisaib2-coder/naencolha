@@ -183,8 +183,8 @@ function SuperAdminContent() {
               </div>
               <div className="col-span-2 text-center text-xs text-muted-foreground">
                 <div className="flex flex-col">
-                  <span>{c.video_count} vídeos</span>
-                  <span>{c.pack_count} packs · {c.free_photo_count} fotos</span>
+                  <span>{c.video_count} vídeos · {c.video_pack_count ?? 0} packs vídeo</span>
+                  <span>{c.pack_count} packs foto · {c.free_photo_count} fotos</span>
                 </div>
               </div>
               <div className="col-span-2 flex items-center justify-center gap-2">
