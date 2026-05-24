@@ -133,11 +133,25 @@ function ProfileTab({ userId }: { userId: string }) {
     });
   }, [profile]);
 
+  const slugifyUsername = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // remove acentos
+      .replace(/[^a-zA-Z0-9_]/g, "") // só letras, números e _
+      .toLowerCase()
+      .slice(0, 30);
+
   const save = async () => {
     setSaving(true);
     try {
+      const cleanUsername = slugifyUsername(form.username);
+      if (form.username && !cleanUsername) {
+        toast.error("Username inválido. Use apenas letras e números (ex: safiraandrade).");
+        setSaving(false);
+        return;
+      }
       const { error } = await supabase.from("profiles").update({
-        username: form.username.toLowerCase().trim() || null,
+        username: cleanUsername || null,
         full_name: form.full_name,
         bio: form.bio,
         whatsapp: form.whatsapp,
@@ -146,6 +160,7 @@ function ProfileTab({ userId }: { userId: string }) {
         cover_photo_url: form.cover_photo_url || null,
       }).eq("id", userId);
       if (error) throw error;
+      if (cleanUsername !== form.username) setForm((f) => ({ ...f, username: cleanUsername }));
       toast.success("Perfil atualizado");
       qc.invalidateQueries({ queryKey: ["my-profile"] });
     } catch (e: any) {
