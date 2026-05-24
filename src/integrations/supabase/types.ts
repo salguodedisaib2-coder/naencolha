@@ -133,6 +133,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pack_videos: {
+        Row: {
+          created_at: string
+          creator_id: string
+          id: string
+          order_index: number
+          video_id: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          id?: string
+          order_index?: number
+          video_id: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          id?: string
+          order_index?: number
+          video_id?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
       page_views: {
         Row: {
           id: string
