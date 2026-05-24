@@ -640,6 +640,43 @@ function VideosTab({ userId }: { userId: string }) {
     finally { setUploading(false); }
   };
 
+  const handlePackVideos = async (files: FileList) => {
+    setUploading(true);
+    try {
+      const uploaded: { url: string; name: string }[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        let workingFile = file;
+        try {
+          const converted = await ensureH264(file, (r) => {
+            if (r > 0 && r < 1) toast.loading(`Convertendo ${file.name}: ${Math.round(r * 100)}%`, { id: "h264-pack" });
+          });
+          if (converted !== file) workingFile = converted;
+        } catch (err) {
+          console.warn("Falha conversão H.264 (pack):", err);
+        }
+        toast.dismiss("h264-pack");
+        const url = await uploadFile("videos", userId, workingFile);
+        uploaded.push({ url, name: file.name });
+
+        // Gera capa do primeiro vídeo automaticamente se ainda não houver
+        if (packVideos.length === 0 && uploaded.length === 1 && !form.thumbnail_url && !thumbManual) {
+          try {
+            const blob = await generateThumbnail(workingFile);
+            const thumbFile = new File([blob], `auto-${Date.now()}.jpg`, { type: "image/jpeg" });
+            const thumbUrl = await uploadFile("thumbnails", userId, thumbFile);
+            setForm((f) => ({ ...f, thumbnail_url: thumbUrl }));
+          } catch (err) {
+            console.warn("Auto-thumb pack falhou:", err);
+          }
+        }
+      }
+      setPackVideos((prev) => [...prev, ...uploaded]);
+      toast.success(`${files.length} vídeo(s) enviados`);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setUploading(false); }
+  };
+
   const save = async () => {
     try {
       if (contentType === "photo_pack") {
