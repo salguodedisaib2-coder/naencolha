@@ -21,25 +21,35 @@ async function getFFmpeg(): Promise<FFmpeg> {
 }
 
 /**
- * Detects video codec from file logs. Returns lowercase codec name (e.g. "hevc", "h264") or null.
+ * Fast codec sniffing by scanning the first chunk of an MP4/MOV container for
+ * the sample-description fourcc (avc1, hvc1, hev1, vp09, av01...). Avoids
+ * loading the entire file into ffmpeg.wasm just to read metadata.
+ * Returns lowercase codec name ("hevc", "h264", ...) or null.
  */
 async function detectCodec(file: File): Promise<string | null> {
-  const ff = await getFFmpeg();
-  const logs: string[] = [];
-  const onLog = ({ message }: { message: string }) => logs.push(message);
-  ff.on("log", onLog);
-  try {
-    const inputName = `probe_${Date.now()}.bin`;
-    await ff.writeFile(inputName, await fetchFile(file));
-    // Run a no-op to get stream info printed to logs
-    await ff.exec(["-i", inputName, "-f", "null", "-"]).catch(() => 0);
-    await ff.deleteFile(inputName).catch(() => {});
-    const joined = logs.join("\n");
-    const m = joined.match(/Stream #\d+:\d+.*?Video:\s*([a-zA-Z0-9_]+)/);
-    return m ? m[1].toLowerCase() : null;
-  } finally {
-    ff.off("log", onLog);
+  // Read up to 8MB from the start — moov is usually within the first few MB
+  // (and faststart files have it right after ftyp).
+  const sliceSize = Math.min(file.size, 8 * 1024 * 1024);
+  const head = new Uint8Array(await file.slice(0, sliceSize).arrayBuffer());
+  const ascii = (i: number) =>
+    String.fromCharCode(head[i], head[i + 1], head[i + 2], head[i + 3]);
+
+  const codecs: Record<string, string> = {
+    hvc1: "hevc",
+    hev1: "hevc",
+    hvcC: "hevc",
+    avc1: "h264",
+    avc3: "h264",
+    avcC: "h264",
+    vp09: "vp9",
+    av01: "av1",
+  };
+
+  for (let i = 0; i < head.length - 4; i++) {
+    const tag = ascii(i);
+    if (codecs[tag]) return codecs[tag];
   }
+  return null;
 }
 
 /**
