@@ -37,25 +37,30 @@ export const listAllCreatorsAdmin = createServerFn({ method: "GET" })
     const ids = (profiles ?? []).map((p) => p.id);
     if (ids.length === 0) return { creators: [] };
 
-    const [viewsRes, videosRes, packsRes, freePhotosRes] = await Promise.all([
+    const [viewsRes, videosRes, packsRes, freePhotosRes, packVideosRes] = await Promise.all([
       supabaseAdmin.from("page_views").select("profile_id").in("profile_id", ids),
       supabaseAdmin.from("videos").select("creator_id, content_type").in("creator_id", ids),
       supabaseAdmin.from("pack_photos").select("creator_id").in("creator_id", ids),
       supabaseAdmin.from("free_photos").select("creator_id").in("creator_id", ids),
+      supabaseAdmin.from("pack_videos").select("creator_id").in("creator_id", ids),
     ]);
 
     const views: Record<string, number> = {};
     for (const r of viewsRes.data ?? []) views[r.profile_id] = (views[r.profile_id] ?? 0) + 1;
     const videoCount: Record<string, number> = {};
     const packCount: Record<string, number> = {};
+    const videoPackCount: Record<string, number> = {};
     for (const r of videosRes.data ?? []) {
       if (r.content_type === "photo_pack") packCount[r.creator_id] = (packCount[r.creator_id] ?? 0) + 1;
+      else if (r.content_type === "video_pack") videoPackCount[r.creator_id] = (videoPackCount[r.creator_id] ?? 0) + 1;
       else videoCount[r.creator_id] = (videoCount[r.creator_id] ?? 0) + 1;
     }
     const photoCount: Record<string, number> = {};
     for (const r of packsRes.data ?? []) photoCount[r.creator_id] = (photoCount[r.creator_id] ?? 0) + 1;
     const freePhotoCount: Record<string, number> = {};
     for (const r of freePhotosRes.data ?? []) freePhotoCount[r.creator_id] = (freePhotoCount[r.creator_id] ?? 0) + 1;
+    const packVideoFileCount: Record<string, number> = {};
+    for (const r of packVideosRes.data ?? []) packVideoFileCount[r.creator_id] = (packVideoFileCount[r.creator_id] ?? 0) + 1;
 
     return {
       creators: (profiles ?? []).map((p) => ({
@@ -63,7 +68,9 @@ export const listAllCreatorsAdmin = createServerFn({ method: "GET" })
         views: views[p.id] ?? 0,
         video_count: videoCount[p.id] ?? 0,
         pack_count: packCount[p.id] ?? 0,
+        video_pack_count: videoPackCount[p.id] ?? 0,
         pack_photo_count: photoCount[p.id] ?? 0,
+        pack_video_count: packVideoFileCount[p.id] ?? 0,
         free_photo_count: freePhotoCount[p.id] ?? 0,
       })),
     };
@@ -77,7 +84,7 @@ export const getCreatorContentAdmin = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.userId!);
-    const [{ data: videos }, { data: freePhotos }, { data: packPhotos }] = await Promise.all([
+    const [{ data: videos }, { data: freePhotos }, { data: packPhotos }, { data: packVideos }] = await Promise.all([
       supabaseAdmin
         .from("videos")
         .select("id, title, description, thumbnail_url, video_url, price_brl, is_free, is_active, content_type, created_at")
@@ -93,27 +100,42 @@ export const getCreatorContentAdmin = createServerFn({ method: "POST" })
         .select("id, video_id, photo_url, order_index, is_cover")
         .eq("creator_id", data.creatorId)
         .order("order_index"),
+      supabaseAdmin
+        .from("pack_videos")
+        .select("id, video_id, video_url, order_index")
+        .eq("creator_id", data.creatorId)
+        .order("order_index"),
     ]);
 
-    // Generate signed URLs for private videos
+    const signVideoUrl = async (url: string | null | undefined) => {
+      if (!url) return null;
+      const marker = "/storage/v1/object/public/videos/";
+      const signedMarker = "/storage/v1/object/sign/videos/";
+      let path = "";
+      if (url.includes(marker)) path = url.split(marker)[1].split("?")[0];
+      else if (url.includes(signedMarker)) path = url.split(signedMarker)[1].split("?")[0];
+      if (!path) return null;
+      const { data: s } = await supabaseAdmin.storage.from("videos").createSignedUrl(path, 60 * 30);
+      return s?.signedUrl ?? null;
+    };
+
+    // Generate signed URLs for private videos (single videos only — packs handled below)
     const videosWithSigned = await Promise.all(
       (videos ?? []).map(async (v) => {
         if (v.content_type !== "video" || !v.video_url) return { ...v, signed_url: null };
-        const marker = "/storage/v1/object/public/videos/";
-        const signedMarker = "/storage/v1/object/sign/videos/";
-        let path = "";
-        if (v.video_url.includes(marker)) path = v.video_url.split(marker)[1].split("?")[0];
-        else if (v.video_url.includes(signedMarker)) path = v.video_url.split(signedMarker)[1].split("?")[0];
-        if (!path) return { ...v, signed_url: null };
-        const { data: s } = await supabaseAdmin.storage.from("videos").createSignedUrl(path, 60 * 30);
-        return { ...v, signed_url: s?.signedUrl ?? null };
+        return { ...v, signed_url: await signVideoUrl(v.video_url) };
       }),
+    );
+
+    const packVideosWithSigned = await Promise.all(
+      (packVideos ?? []).map(async (pv) => ({ ...pv, signed_url: await signVideoUrl(pv.video_url) })),
     );
 
     return {
       videos: videosWithSigned,
       free_photos: freePhotos ?? [],
       pack_photos: packPhotos ?? [],
+      pack_videos: packVideosWithSigned,
     };
   });
 
@@ -164,6 +186,7 @@ export const deleteCreatorAdmin = createServerFn({ method: "POST" })
     await supabaseAdmin.from("video_vouchers").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("purchases").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("pack_photos").delete().eq("creator_id", creatorId);
+    await supabaseAdmin.from("pack_videos").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("videos").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("free_photos").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("creator_services").delete().eq("creator_id", creatorId);

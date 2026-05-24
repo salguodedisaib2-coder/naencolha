@@ -183,8 +183,8 @@ function SuperAdminContent() {
               </div>
               <div className="col-span-2 text-center text-xs text-muted-foreground">
                 <div className="flex flex-col">
-                  <span>{c.video_count} vídeos</span>
-                  <span>{c.pack_count} packs · {c.free_photo_count} fotos</span>
+                  <span>{c.video_count} vídeos · {c.video_pack_count ?? 0} packs vídeo</span>
+                  <span>{c.pack_count} packs foto · {c.free_photo_count} fotos</span>
                 </div>
               </div>
               <div className="col-span-2 flex items-center justify-center gap-2">
@@ -286,9 +286,14 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
 
   const videos = (data?.videos ?? []).filter((v: any) => v.content_type === "video");
   const packs = (data?.videos ?? []).filter((v: any) => v.content_type === "photo_pack");
+  const videoPacks = (data?.videos ?? []).filter((v: any) => v.content_type === "video_pack");
   const packPhotosByVideo: Record<string, any[]> = {};
   for (const p of data?.pack_photos ?? []) {
     (packPhotosByVideo[p.video_id] ??= []).push(p);
+  }
+  const packVideosByVideo: Record<string, any[]> = {};
+  for (const pv of data?.pack_videos ?? []) {
+    (packVideosByVideo[pv.video_id] ??= []).push(pv);
   }
   const freePhotos = data?.free_photos ?? [];
 
@@ -308,7 +313,8 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
           <Tabs defaultValue="videos">
             <TabsList>
               <TabsTrigger value="videos"><Play className="w-3.5 h-3.5 mr-1" /> Vídeos ({videos.length})</TabsTrigger>
-              <TabsTrigger value="packs"><Images className="w-3.5 h-3.5 mr-1" /> Packs ({packs.length})</TabsTrigger>
+              <TabsTrigger value="packs"><Images className="w-3.5 h-3.5 mr-1" /> Packs foto ({packs.length})</TabsTrigger>
+              <TabsTrigger value="video-packs"><Play className="w-3.5 h-3.5 mr-1" /> Packs vídeo ({videoPacks.length})</TabsTrigger>
               <TabsTrigger value="free">Fotos grátis ({freePhotos.length})</TabsTrigger>
             </TabsList>
 
@@ -354,6 +360,47 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
                 );
               })}
             </TabsContent>
+
+            <TabsContent value="video-packs" className="space-y-4 mt-4">
+              {videoPacks.length === 0 && <p className="text-sm text-muted-foreground">Sem packs de vídeo.</p>}
+              {videoPacks.map((p: any) => {
+                const items = packVideosByVideo[p.id] ?? [];
+                return (
+                  <div key={p.id} className="border border-border rounded-lg p-4">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <h4 className="font-semibold">{p.title}</h4>
+                      <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">{items.length} vídeos</span>
+                      {!p.is_active && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">Inativo</span>}
+                      <span className="text-xs text-muted-foreground ml-auto">{p.is_free ? "Gratuito" : formatBRL(Number(p.price_brl))}</span>
+                    </div>
+                    {p.description && <p className="text-sm text-muted-foreground mb-3">{p.description}</p>}
+                    {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-40 h-24 object-cover rounded mb-3" />}
+                    <div className="space-y-2">
+                      {items.map((pv: any, i: number) => (
+                        <div key={pv.id} className="flex items-center gap-3 p-2 border border-border rounded">
+                          <span className="text-xs text-muted-foreground w-6">#{i + 1}</span>
+                          {pv.signed_url ? (
+                            <>
+                              <video src={pv.signed_url} controls className="w-48 h-28 rounded bg-black object-cover" />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadFromUrl(pv.signed_url, `${safeName(p.title)}_${i + 1}.mp4`)}
+                              >
+                                <Download className="w-4 h-4 mr-1" /> Baixar
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-destructive">URL indisponível</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </TabsContent>
+
 
             <TabsContent value="free" className="mt-4">
               {freePhotos.length === 0 ? (
