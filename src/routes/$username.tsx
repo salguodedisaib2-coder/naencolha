@@ -100,6 +100,12 @@ function ProfilePage() {
     return map;
   }, [data]);
 
+  const profileId = data?.profile?.id;
+  useEffect(() => {
+    if (!profileId) return;
+    trackView({ data: { profileId } }).catch(() => {});
+  }, [profileId, trackView]);
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 space-y-6">
