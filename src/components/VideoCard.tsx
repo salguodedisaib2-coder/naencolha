@@ -16,7 +16,7 @@ interface Props {
   isFree?: boolean;
   resolution?: string | null;
   durationSeconds?: number | null;
-  contentType?: "video" | "photo_pack" | string | null;
+  contentType?: "video" | "photo_pack" | "video_pack" | string | null;
   photoCount?: number;
   onBuy: () => void;
 }
