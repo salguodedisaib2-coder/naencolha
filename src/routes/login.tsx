@@ -20,11 +20,20 @@ function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const routeByRole = async (userId: string) => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    const isSuper = (data ?? []).some((r: any) => r.role === "super_admin");
+    navigate({ to: isSuper ? "/superadmin" : "/admin" });
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/admin" });
+      if (data.session) routeByRole(data.session.user.id);
     });
-  }, [navigate]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,10 +53,10 @@ function LoginPage() {
           description: "Verifique seu e-mail para confirmar o cadastro.",
         });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Bem-vinda de volta!");
-        navigate({ to: "/admin" });
+        if (data.user) await routeByRole(data.user.id);
       }
     } catch (err: any) {
       toast.error("Erro", { description: err.message });
