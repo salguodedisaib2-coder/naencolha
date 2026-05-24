@@ -133,11 +133,25 @@ function ProfileTab({ userId }: { userId: string }) {
     });
   }, [profile]);
 
+  const slugifyUsername = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // remove acentos
+      .replace(/[^a-zA-Z0-9_]/g, "") // só letras, números e _
+      .toLowerCase()
+      .slice(0, 30);
+
   const save = async () => {
     setSaving(true);
     try {
+      const cleanUsername = slugifyUsername(form.username);
+      if (form.username && !cleanUsername) {
+        toast.error("Username inválido. Use apenas letras e números (ex: safiraandrade).");
+        setSaving(false);
+        return;
+      }
       const { error } = await supabase.from("profiles").update({
-        username: form.username.toLowerCase().trim() || null,
+        username: cleanUsername || null,
         full_name: form.full_name,
         bio: form.bio,
         whatsapp: form.whatsapp,
@@ -146,6 +160,7 @@ function ProfileTab({ userId }: { userId: string }) {
         cover_photo_url: form.cover_photo_url || null,
       }).eq("id", userId);
       if (error) throw error;
+      if (cleanUsername !== form.username) setForm((f) => ({ ...f, username: cleanUsername }));
       toast.success("Perfil atualizado");
       qc.invalidateQueries({ queryKey: ["my-profile"] });
     } catch (e: any) {
@@ -181,7 +196,24 @@ function ProfileTab({ userId }: { userId: string }) {
       </div>
       <div>
         <Label>Username (URL: /seunome)</Label>
-        <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="ex: lara" />
+        <Input
+          value={form.username}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              username: e.target.value
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9_]/g, "")
+                .toLowerCase()
+                .slice(0, 30),
+            })
+          }
+          placeholder="ex: safiraandrade"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Apenas letras e números, sem espaços, acentos ou emojis. Esse é o endereço curto da sua página.
+        </p>
       </div>
       <div>
         <Label>Nome de exibição</Label>
