@@ -36,7 +36,9 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [loadingPlay, setLoadingPlay] = useState(false);
   const fetchFreeUrl = useServerFn(getFreeVideoUrl);
-  const isPack = contentType === "photo_pack";
+  const isPhotoPack = contentType === "photo_pack";
+  const isVideoPack = contentType === "video_pack";
+  const isPack = isPhotoPack || isVideoPack;
 
   useEffect(() => {
     if (!open || isPack || !isFree || playUrl) return;
@@ -56,7 +58,10 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
   }, [open, isFree, isPack, id, playUrl, fetchFreeUrl]);
 
   const durationLabel = formatDuration(durationSeconds);
-  const typeLabel = isPack
+  const PackIcon = isVideoPack ? Film : Images;
+  const typeLabel = isVideoPack
+    ? (photoCount && photoCount > 1 ? `PACK ${photoCount} VÍDEOS` : "PACK VÍDEOS")
+    : isPhotoPack
     ? (photoCount && photoCount > 1 ? `PACK ${photoCount} FOTOS` : "FOTO")
     : "VÍDEO";
 
