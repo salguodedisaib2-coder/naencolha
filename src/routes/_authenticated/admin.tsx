@@ -966,7 +966,7 @@ function VideosTab({ userId }: { userId: string }) {
                 uploading ||
                 !form.title ||
                 (!form.is_free && !form.price) ||
-                (contentType === "video" ? !form.video_url : packPhotos.length === 0)
+                (contentType === "video" ? !form.video_url : contentType === "video_pack" ? packVideos.length === 0 : packPhotos.length === 0)
               }
               className="bg-gradient-primary"
             >
