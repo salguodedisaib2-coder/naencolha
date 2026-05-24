@@ -315,33 +315,7 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
             <TabsContent value="videos" className="space-y-4 mt-4">
               {videos.length === 0 && <p className="text-sm text-muted-foreground">Sem vídeos.</p>}
               {videos.map((v: any) => (
-                <div key={v.id} className="border border-border rounded-lg p-4">
-                  <div className="flex items-start gap-4">
-                    {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-40 h-24 object-cover rounded" />}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-semibold truncate">{v.title}</h4>
-                        {v.is_free && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">Grátis</span>}
-                        {!v.is_active && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">Inativo</span>}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{v.description || "—"}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{v.is_free ? "Gratuito" : formatBRL(Number(v.price_brl))}</p>
-                      {v.signed_url && (
-                        <>
-                          <video src={v.signed_url} controls className="mt-3 w-full max-w-xl rounded" />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="mt-2"
-                            onClick={() => downloadFromUrl(v.signed_url, `${safeName(v.title)}.mp4`)}
-                          >
-                            <Download className="w-4 h-4 mr-1" /> Baixar vídeo
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <VideoReviewRow key={v.id} v={v} creatorId={creatorId} />
               ))}
             </TabsContent>
 
