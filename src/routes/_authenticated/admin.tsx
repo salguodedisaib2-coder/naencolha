@@ -28,6 +28,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ServiceChip } from "@/components/ServiceChip";
 import { CATEGORY_LABELS, CATEGORY_ORDER, formatBRL, type ServiceCategory } from "@/lib/categories";
 import { createVoucher, revokeVoucher, listVouchersForVideo, listAllVouchers, getVoucherStats, setVideoFeatured } from "@/lib/vouchers.functions";
+import { ensureH264 } from "@/lib/transcode-h265";
 import { toast } from "sonner";
 import { Trash2, Upload, Ticket, Copy, MessageCircle, Flame, TrendingUp } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
