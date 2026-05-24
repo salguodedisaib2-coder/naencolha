@@ -286,9 +286,14 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
 
   const videos = (data?.videos ?? []).filter((v: any) => v.content_type === "video");
   const packs = (data?.videos ?? []).filter((v: any) => v.content_type === "photo_pack");
+  const videoPacks = (data?.videos ?? []).filter((v: any) => v.content_type === "video_pack");
   const packPhotosByVideo: Record<string, any[]> = {};
   for (const p of data?.pack_photos ?? []) {
     (packPhotosByVideo[p.video_id] ??= []).push(p);
+  }
+  const packVideosByVideo: Record<string, any[]> = {};
+  for (const pv of data?.pack_videos ?? []) {
+    (packVideosByVideo[pv.video_id] ??= []).push(pv);
   }
   const freePhotos = data?.free_photos ?? [];
 
