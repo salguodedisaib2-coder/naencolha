@@ -434,9 +434,10 @@ function VideosTab({ userId }: { userId: string }) {
     },
   });
   const [adding, setAdding] = useState(false);
-  const [contentType, setContentType] = useState<"video" | "photo_pack">("video");
+  const [contentType, setContentType] = useState<"video" | "photo_pack" | "video_pack">("video");
   const [form, setForm] = useState({ title: "", description: "", price: "", video_url: "", thumbnail_url: "", is_free: false, resolution: "", duration_seconds: 0 });
   const [packPhotos, setPackPhotos] = useState<{ url: string }[]>([]);
+  const [packVideos, setPackVideos] = useState<{ url: string; name: string }[]>([]);
   const [coverIdx, setCoverIdx] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
   const [thumbManual, setThumbManual] = useState(false);
@@ -446,6 +447,7 @@ function VideosTab({ userId }: { userId: string }) {
     setThumbManual(false);
     setContentType("video");
     setPackPhotos([]);
+    setPackVideos([]);
     setCoverIdx(0);
     setAdding(false);
   };
