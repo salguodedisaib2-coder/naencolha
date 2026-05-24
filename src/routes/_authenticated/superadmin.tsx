@@ -382,3 +382,91 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
     </Dialog>
   );
 }
+
+function VideoReviewRow({ v, creatorId }: { v: any; creatorId: string }) {
+  const qc = useQueryClient();
+  const createUrlFn = useServerFn(createVideoUploadUrlAdmin);
+  const finalizeFn = useServerFn(finalizeVideoReplaceAdmin);
+  const [converting, setConverting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [phase, setPhase] = useState<string>("");
+
+  const handleConvert = async () => {
+    if (!v.signed_url) return toast.error("Sem URL do vídeo");
+    setConverting(true);
+    setProgress(0);
+    setPhase("Baixando...");
+    try {
+      const res = await fetch(v.signed_url);
+      if (!res.ok) throw new Error("Falha ao baixar vídeo");
+      const blob = await res.blob();
+      const file = new File([blob], `${safeName(v.title)}.mp4`, { type: blob.type || "video/mp4" });
+
+      setPhase("Analisando codec...");
+      const converted = await ensureH264(file, (r) => {
+        setPhase("Convertendo...");
+        setProgress(Math.round(r * 100));
+      });
+
+      if (converted === file) {
+        toast.info("Vídeo já está em H.264 — nada a converter.");
+        setConverting(false);
+        return;
+      }
+
+      setPhase("Enviando...");
+      setProgress(0);
+      const { path, token } = await createUrlFn({ data: { creatorId } });
+      const { error: upErr } = await supabase.storage
+        .from("videos")
+        .uploadToSignedUrl(path, token, converted, { contentType: "video/mp4" });
+      if (upErr) throw new Error(upErr.message);
+
+      setPhase("Finalizando...");
+      await finalizeFn({ data: { videoId: v.id, newPath: path } });
+      toast.success("Vídeo convertido para H.264");
+      qc.invalidateQueries({ queryKey: ["sa-content", creatorId] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha na conversão");
+    } finally {
+      setConverting(false);
+      setPhase("");
+      setProgress(0);
+    }
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-4">
+      <div className="flex items-start gap-4">
+        {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-40 h-24 object-cover rounded" />}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-semibold truncate">{v.title}</h4>
+            {v.is_free && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">Grátis</span>}
+            {!v.is_active && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">Inativo</span>}
+          </div>
+          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{v.description || "—"}</p>
+          <p className="text-xs text-muted-foreground mt-1">{v.is_free ? "Gratuito" : formatBRL(Number(v.price_brl))}</p>
+          {v.signed_url && (
+            <>
+              <video src={v.signed_url} controls className="mt-3 w-full max-w-xl rounded" />
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => downloadFromUrl(v.signed_url, `${safeName(v.title)}.mp4`)}
+                  disabled={converting}
+                >
+                  <Download className="w-4 h-4 mr-1" /> Baixar vídeo
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleConvert} disabled={converting}>
+                  {converting ? `${phase} ${progress ? progress + "%" : ""}` : "Converter para H.264"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
