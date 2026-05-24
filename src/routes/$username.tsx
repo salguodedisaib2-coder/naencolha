@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { ServiceChip } from "@/components/ServiceChip";
 import { Logo } from "@/components/Logo";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/categories";
 import { MessageCircle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { recordPageView } from "@/lib/superadmin.functions";
 
 export const Route = createFileRoute("/$username")({
   component: ProfilePage,
