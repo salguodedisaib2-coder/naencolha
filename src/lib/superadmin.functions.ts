@@ -84,7 +84,7 @@ export const getCreatorContentAdmin = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.userId!);
-    const [{ data: videos }, { data: freePhotos }, { data: packPhotos }] = await Promise.all([
+    const [{ data: videos }, { data: freePhotos }, { data: packPhotos }, { data: packVideos }] = await Promise.all([
       supabaseAdmin
         .from("videos")
         .select("id, title, description, thumbnail_url, video_url, price_brl, is_free, is_active, content_type, created_at")
@@ -100,27 +100,42 @@ export const getCreatorContentAdmin = createServerFn({ method: "POST" })
         .select("id, video_id, photo_url, order_index, is_cover")
         .eq("creator_id", data.creatorId)
         .order("order_index"),
+      supabaseAdmin
+        .from("pack_videos")
+        .select("id, video_id, video_url, order_index")
+        .eq("creator_id", data.creatorId)
+        .order("order_index"),
     ]);
 
-    // Generate signed URLs for private videos
+    const signVideoUrl = async (url: string | null | undefined) => {
+      if (!url) return null;
+      const marker = "/storage/v1/object/public/videos/";
+      const signedMarker = "/storage/v1/object/sign/videos/";
+      let path = "";
+      if (url.includes(marker)) path = url.split(marker)[1].split("?")[0];
+      else if (url.includes(signedMarker)) path = url.split(signedMarker)[1].split("?")[0];
+      if (!path) return null;
+      const { data: s } = await supabaseAdmin.storage.from("videos").createSignedUrl(path, 60 * 30);
+      return s?.signedUrl ?? null;
+    };
+
+    // Generate signed URLs for private videos (single videos only — packs handled below)
     const videosWithSigned = await Promise.all(
       (videos ?? []).map(async (v) => {
         if (v.content_type !== "video" || !v.video_url) return { ...v, signed_url: null };
-        const marker = "/storage/v1/object/public/videos/";
-        const signedMarker = "/storage/v1/object/sign/videos/";
-        let path = "";
-        if (v.video_url.includes(marker)) path = v.video_url.split(marker)[1].split("?")[0];
-        else if (v.video_url.includes(signedMarker)) path = v.video_url.split(signedMarker)[1].split("?")[0];
-        if (!path) return { ...v, signed_url: null };
-        const { data: s } = await supabaseAdmin.storage.from("videos").createSignedUrl(path, 60 * 30);
-        return { ...v, signed_url: s?.signedUrl ?? null };
+        return { ...v, signed_url: await signVideoUrl(v.video_url) };
       }),
+    );
+
+    const packVideosWithSigned = await Promise.all(
+      (packVideos ?? []).map(async (pv) => ({ ...pv, signed_url: await signVideoUrl(pv.video_url) })),
     );
 
     return {
       videos: videosWithSigned,
       free_photos: freePhotos ?? [],
       pack_photos: packPhotos ?? [],
+      pack_videos: packVideosWithSigned,
     };
   });
 
