@@ -434,9 +434,10 @@ function VideosTab({ userId }: { userId: string }) {
     },
   });
   const [adding, setAdding] = useState(false);
-  const [contentType, setContentType] = useState<"video" | "photo_pack">("video");
+  const [contentType, setContentType] = useState<"video" | "photo_pack" | "video_pack">("video");
   const [form, setForm] = useState({ title: "", description: "", price: "", video_url: "", thumbnail_url: "", is_free: false, resolution: "", duration_seconds: 0 });
   const [packPhotos, setPackPhotos] = useState<{ url: string }[]>([]);
+  const [packVideos, setPackVideos] = useState<{ url: string; name: string }[]>([]);
   const [coverIdx, setCoverIdx] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
   const [thumbManual, setThumbManual] = useState(false);
@@ -446,6 +447,7 @@ function VideosTab({ userId }: { userId: string }) {
     setThumbManual(false);
     setContentType("video");
     setPackPhotos([]);
+    setPackVideos([]);
     setCoverIdx(0);
     setAdding(false);
   };
@@ -638,6 +640,43 @@ function VideosTab({ userId }: { userId: string }) {
     finally { setUploading(false); }
   };
 
+  const handlePackVideos = async (files: FileList) => {
+    setUploading(true);
+    try {
+      const uploaded: { url: string; name: string }[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        let workingFile = file;
+        try {
+          const converted = await ensureH264(file, (r) => {
+            if (r > 0 && r < 1) toast.loading(`Convertendo ${file.name}: ${Math.round(r * 100)}%`, { id: "h264-pack" });
+          });
+          if (converted !== file) workingFile = converted;
+        } catch (err) {
+          console.warn("Falha conversão H.264 (pack):", err);
+        }
+        toast.dismiss("h264-pack");
+        const url = await uploadFile("videos", userId, workingFile);
+        uploaded.push({ url, name: file.name });
+
+        // Gera capa do primeiro vídeo automaticamente se ainda não houver
+        if (packVideos.length === 0 && uploaded.length === 1 && !form.thumbnail_url && !thumbManual) {
+          try {
+            const blob = await generateThumbnail(workingFile);
+            const thumbFile = new File([blob], `auto-${Date.now()}.jpg`, { type: "image/jpeg" });
+            const thumbUrl = await uploadFile("thumbnails", userId, thumbFile);
+            setForm((f) => ({ ...f, thumbnail_url: thumbUrl }));
+          } catch (err) {
+            console.warn("Auto-thumb pack falhou:", err);
+          }
+        }
+      }
+      setPackVideos((prev) => [...prev, ...uploaded]);
+      toast.success(`${files.length} vídeo(s) enviados`);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setUploading(false); }
+  };
+
   const save = async () => {
     try {
       if (contentType === "photo_pack") {
@@ -664,6 +703,28 @@ function VideosTab({ userId }: { userId: string }) {
         const { error: phErr } = await supabase.from("pack_photos").insert(rows);
         if (phErr) throw phErr;
         toast.success("Pack de fotos cadastrado");
+      } else if (contentType === "video_pack") {
+        if (packVideos.length === 0) { toast.error("Envie ao menos 1 vídeo"); return; }
+        const { data: inserted, error } = await supabase.from("videos").insert({
+          creator_id: userId,
+          title: form.title,
+          description: form.description,
+          price_brl: form.is_free ? 0 : Number(form.price),
+          video_url: null,
+          thumbnail_url: form.thumbnail_url || null,
+          is_free: form.is_free,
+          content_type: "video_pack",
+        }).select("id").single();
+        if (error) throw error;
+        const rows = packVideos.map((p, i) => ({
+          video_id: inserted.id,
+          creator_id: userId,
+          video_url: p.url,
+          order_index: i,
+        }));
+        const { error: pvErr } = await supabase.from("pack_videos").insert(rows);
+        if (pvErr) throw pvErr;
+        toast.success("Pack de vídeos cadastrado");
       } else {
         const { error } = await supabase.from("videos").insert({
           creator_id: userId,
@@ -692,6 +753,7 @@ function VideosTab({ userId }: { userId: string }) {
   const del = async (id: string) => {
     if (!confirm("Excluir conteúdo?")) return;
     await supabase.from("pack_photos").delete().eq("video_id", id);
+    await supabase.from("pack_videos").delete().eq("video_id", id);
     await supabase.from("videos").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["my-videos"] });
   };
@@ -758,9 +820,12 @@ function VideosTab({ userId }: { userId: string }) {
 
           <div>
             <Label className="mb-2 block">Tipo de conteúdo</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button type="button" variant={contentType === "video" ? "default" : "outline"} size="sm" onClick={() => setContentType("video")}>
-                Vídeo
+                Vídeo unitário
+              </Button>
+              <Button type="button" variant={contentType === "video_pack" ? "default" : "outline"} size="sm" onClick={() => setContentType("video_pack")}>
+                Pack de vídeos
               </Button>
               <Button type="button" variant={contentType === "photo_pack" ? "default" : "outline"} size="sm" onClick={() => setContentType("photo_pack")}>
                 Pack de fotos
@@ -768,7 +833,7 @@ function VideosTab({ userId }: { userId: string }) {
             </div>
           </div>
 
-          {contentType === "video" ? (
+          {contentType === "video" && (
             <>
               <div>
                 <Label>Arquivo de vídeo</Label>
@@ -790,7 +855,48 @@ function VideosTab({ userId }: { userId: string }) {
                 )}
               </div>
             </>
-          ) : (
+          )}
+
+          {contentType === "video_pack" && (
+            <>
+              <div>
+                <Label>Vídeos do pack (envie 2 ou mais)</Label>
+                <Input type="file" accept="video/*" multiple onChange={(e) => e.target.files && handlePackVideos(e.target.files)} />
+                <p className="text-xs text-muted-foreground mt-1">
+                  H.265 é convertido automaticamente para H.264. A capa do pack é gerada do primeiro vídeo (ou envie uma abaixo).
+                </p>
+                {packVideos.length > 0 && (
+                  <div className="grid gap-2 mt-3">
+                    {packVideos.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 px-3 py-2 border border-border rounded-lg text-sm">
+                        <span className="truncate flex-1">{i + 1}. {p.name}</span>
+                        <button
+                          type="button"
+                          aria-label="Remover"
+                          onClick={() => setPackVideos((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="p-1 rounded-full bg-destructive text-destructive-foreground"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label>Capa do pack (opcional — gerada do primeiro vídeo se vazia)</Label>
+                <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile("thumb", e.target.files[0])} />
+                {form.thumbnail_url && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <img src={form.thumbnail_url} alt="capa" className="w-24 h-16 object-cover rounded" />
+                    <p className="text-xs text-primary">✓ {thumbManual ? "Enviada" : "Gerada automaticamente"}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {contentType === "photo_pack" && (
             <div>
               <Label>Fotos do pack (envie 1 ou mais — pode ser pack de 10)</Label>
               <Input type="file" accept="image/*" multiple onChange={(e) => e.target.files && handlePackPhotos(e.target.files)} />
@@ -860,7 +966,7 @@ function VideosTab({ userId }: { userId: string }) {
                 uploading ||
                 !form.title ||
                 (!form.is_free && !form.price) ||
-                (contentType === "video" ? !form.video_url : packPhotos.length === 0)
+                (contentType === "video" ? !form.video_url : contentType === "video_pack" ? packVideos.length === 0 : packPhotos.length === 0)
               }
               className="bg-gradient-primary"
             >
@@ -923,7 +1029,7 @@ function VideosTab({ userId }: { userId: string }) {
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-semibold truncate">{v.title}</p>
                 <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">
-                  {v.content_type === "photo_pack" ? "Pack de fotos" : "Vídeo"}
+                  {v.content_type === "photo_pack" ? "Pack de fotos" : v.content_type === "video_pack" ? "Pack de vídeos" : "Vídeo"}
                 </span>
                 {v.is_free && <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">Grátis</span>}
                 {v.resolution && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{v.resolution}</span>}

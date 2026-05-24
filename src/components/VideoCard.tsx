@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatBRL } from "@/lib/categories";
-import { Play, Ticket, Images } from "lucide-react";
+import { Play, Ticket, Images, Film } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getFreeVideoUrl } from "@/lib/videos.functions";
 
@@ -16,7 +16,7 @@ interface Props {
   isFree?: boolean;
   resolution?: string | null;
   durationSeconds?: number | null;
-  contentType?: "video" | "photo_pack" | string | null;
+  contentType?: "video" | "photo_pack" | "video_pack" | string | null;
   photoCount?: number;
   onBuy: () => void;
 }
@@ -36,7 +36,9 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [loadingPlay, setLoadingPlay] = useState(false);
   const fetchFreeUrl = useServerFn(getFreeVideoUrl);
-  const isPack = contentType === "photo_pack";
+  const isPhotoPack = contentType === "photo_pack";
+  const isVideoPack = contentType === "video_pack";
+  const isPack = isPhotoPack || isVideoPack;
 
   useEffect(() => {
     if (!open || isPack || !isFree || playUrl) return;
@@ -56,7 +58,10 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
   }, [open, isFree, isPack, id, playUrl, fetchFreeUrl]);
 
   const durationLabel = formatDuration(durationSeconds);
-  const typeLabel = isPack
+  const PackIcon = isVideoPack ? Film : Images;
+  const typeLabel = isVideoPack
+    ? (photoCount && photoCount > 1 ? `PACK ${photoCount} VÍDEOS` : "PACK VÍDEOS")
+    : isPhotoPack
     ? (photoCount && photoCount > 1 ? `PACK ${photoCount} FOTOS` : "FOTO")
     : "VÍDEO";
 
@@ -76,7 +81,7 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
             />
           ) : (
             <div className="w-full h-full bg-gradient-primary opacity-30 flex items-center justify-center">
-              {isPack ? <Images className="w-12 h-12 text-foreground/50" /> : <Play className="w-12 h-12 text-foreground/50" />}
+              {isPack ? <PackIcon className="w-12 h-12 text-foreground/50" /> : <Play className="w-12 h-12 text-foreground/50" />}
             </div>
           )}
           {isPack && !isFree && (
@@ -87,7 +92,7 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
             </div>
           )}
           <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-background/80 text-foreground text-[10px] font-bold tracking-wide backdrop-blur-sm flex items-center gap-1">
-            {isPack ? <Images className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            {isPack ? <PackIcon className="w-3 h-3" /> : <Play className="w-3 h-3" />}
             {typeLabel}
           </div>
           <div className="absolute top-2 right-2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow">
@@ -150,7 +155,7 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
                 </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  <Images className="w-16 h-16" />
+                  <PackIcon className="w-16 h-16" />
                 </div>
               )
             ) : isFree ? (
@@ -175,7 +180,7 @@ export function VideoCard({ id, title, description, thumbnailUrl, price, isFree,
               </div>
             )}
             <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-background/80 text-foreground text-xs font-bold tracking-wide backdrop-blur-sm flex items-center gap-1">
-              {isPack ? <Images className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              {isPack ? <PackIcon className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               {typeLabel}
             </div>
             <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow">

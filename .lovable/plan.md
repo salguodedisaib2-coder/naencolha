@@ -1,25 +1,40 @@
-## Loja de vídeos completa + carrossel na home
+## Adicionar "Pack de Vídeos" no admin
 
-### 1. Home (`src/routes/index.tsx`) — seção "Mais vendidos"
-- Mostrar apenas **3 cards por vez** (responsivo: 1 no mobile, 2 em tablet, 3 em desktop).
-- Adicionar **setas laterais** (◀ ▶) para navegar entre os vídeos em destaque (scroll horizontal por página).
-- Adicionar um botão/link **"Ver todos os conteúdos →"** ao lado do título, levando para `/conteudos`.
-- Cards continuam linkando para o perfil da criadora (comportamento de compra atual preservado).
+Hoje no painel da criadora existem 2 tipos: **Vídeo** (unitário) e **Pack de Fotos**. Vou adicionar um terceiro tipo: **Pack de Vídeos** (vários vídeos vendidos como um único produto).
 
-### 2. Nova rota `src/routes/conteudos.tsx` — loja completa
-- Header reutilizando o `<Logo />` igual à home.
-- Título: "Todos os conteúdos".
-- Campo de busca por título do vídeo + nome da criadora.
-- Filtro por faixa de preço (Grátis / Pago) — toggle simples.
-- Ordenação: Mais recentes / Mais vendidos / Preço.
-- Grid responsivo (2 col mobile, 3 tablet, 4 desktop) listando **todos** os vídeos ativos de criadoras ativas.
-- Cada card mostra capa, título, criadora, preço e linka para `/{username}` (mesma jornada de compra).
-- SEO: `head()` com title "Conteúdos | NaEncolha" e meta description.
+### O que muda
 
-### 3. Navegação
-- Adicionar link **"Conteúdos"** no header da home (`index.tsx`) e do perfil (`$username.tsx`) ao lado de "Área da criadora".
+**1. Banco de dados (migração)**
+- Nova tabela `pack_videos` (espelho do `pack_photos`):
+  - `id`, `creator_id`, `video_id` (referência ao registro em `videos`), `video_url`, `order_index`, `created_at`
+- RLS: criadora gerencia os próprios; super admin gerencia todos; leitura pública (igual `pack_photos`)
+- Coluna `videos.content_type` passa a aceitar também o valor `video_pack` (além de `video` e `photo_pack`)
+
+**2. Painel da criadora (`/admin`)**
+- Botão de tipo passa a ter 3 opções: **Vídeo unitário** · **Pack de vídeos** · **Pack de fotos**
+- Quando "Pack de vídeos" é selecionado:
+  - Upload de **múltiplos arquivos** de vídeo (igual ao pack de fotos hoje)
+  - Conversão automática H.265 → H.264 aplicada em cada vídeo enviado (reaproveita o pipeline existente)
+  - Thumbnail: gerada automaticamente do **primeiro vídeo** (ou enviada manualmente como capa do pack)
+  - Mesmo fluxo de título, descrição, preço, gratuito/pago
+- Salvar: cria 1 registro em `videos` com `content_type='video_pack'` + N registros em `pack_videos`
+- Excluir conteúdo: também limpa `pack_videos`
+
+**3. Listagem do conteúdo (cards do admin e super admin)**
+- Badge mostra "Pack de vídeos" quando aplicável (hoje mostra "Vídeo" ou "Pack de fotos")
+- Super admin: botões de download passam a listar todos os vídeos do pack
+
+**4. Página pública da criadora (`/$username`)**
+- Card do pack de vídeos mostra a capa + selo "Pack" + quantidade de vídeos
+- Após compra/voucher, página de download lista os vídeos do pack (igual fotos do pack hoje)
 
 ### Detalhes técnicos
-- Carrossel: usar estado `pageIndex` + transform CSS, sem dependência nova. Setas escondidas quando não há próxima/anterior.
-- Query nova em `conteudos.tsx`: `videos` com join em `profiles!inner` filtrando `is_active=true` dos dois lados, sem `is_featured`.
-- Mesma rota e tabela já existentes — sem migração de banco.
+
+- `pack_videos` segue exatamente o mesmo padrão de `pack_photos` para manter consistência
+- Conversão H.264 reaproveita `ensureH264` em loop sobre os arquivos selecionados
+- Não mexer no fluxo atual de "Vídeo unitário" nem de "Pack de fotos" — só adicionar o novo caminho
+
+### Fora do escopo
+
+- Não vou mexer no preço por unidade (preço é único do pack)
+- Não vou adicionar prévia/trailer de pack de vídeos nesta etapa
