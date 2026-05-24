@@ -324,7 +324,17 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{v.description || "—"}</p>
                       <p className="text-xs text-muted-foreground mt-1">{v.is_free ? "Gratuito" : formatBRL(Number(v.price_brl))}</p>
                       {v.signed_url && (
-                        <video src={v.signed_url} controls className="mt-3 w-full max-w-xl rounded" />
+                        <>
+                          <video src={v.signed_url} controls className="mt-3 w-full max-w-xl rounded" />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => downloadFromUrl(v.signed_url, `${safeName(v.title)}.mp4`)}
+                          >
+                            <Download className="w-4 h-4 mr-1" /> Baixar vídeo
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
