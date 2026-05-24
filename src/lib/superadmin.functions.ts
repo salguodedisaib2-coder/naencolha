@@ -211,3 +211,57 @@ export const seedTestSuperAdmin = createServerFn({ method: "POST" }).handler(asy
 
   return { ok: true, userId: user.id, email };
 });
+
+// Super admin — create a signed upload URL for replacing a video file
+export const createVideoUploadUrlAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ creatorId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.userId!);
+    const newPath = `${data.creatorId}/h264_${Date.now()}.mp4`;
+    const { data: signed, error } = await supabaseAdmin.storage
+      .from("videos")
+      .createSignedUploadUrl(newPath);
+    if (error || !signed) throw new Error(error?.message ?? "Falha ao criar URL de upload");
+    return { path: newPath, token: signed.token };
+  });
+
+// Super admin — finalize replacement: update DB row, remove old file
+export const finalizeVideoReplaceAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      videoId: z.string().uuid(),
+      newPath: z.string().min(1),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.userId!);
+    const { data: row, error: fetchErr } = await supabaseAdmin
+      .from("videos")
+      .select("video_url")
+      .eq("id", data.videoId)
+      .maybeSingle();
+    if (fetchErr || !row) throw new Error(fetchErr?.message ?? "Vídeo não encontrado");
+
+    const marker = "/storage/v1/object/public/videos/";
+    const signedMarker = "/storage/v1/object/sign/videos/";
+    let oldPath = "";
+    const u = row.video_url ?? "";
+    if (u.includes(marker)) oldPath = u.split(marker)[1].split("?")[0];
+    else if (u.includes(signedMarker)) oldPath = u.split(signedMarker)[1].split("?")[0];
+
+    const { data: pub } = supabaseAdmin.storage.from("videos").getPublicUrl(data.newPath);
+    const { error: updErr } = await supabaseAdmin
+      .from("videos")
+      .update({ video_url: pub.publicUrl })
+      .eq("id", data.videoId);
+    if (updErr) throw new Error(updErr.message);
+
+    if (oldPath && oldPath !== data.newPath) {
+      await supabaseAdmin.storage.from("videos").remove([oldPath]).catch(() => {});
+    }
+    return { ok: true };
+  });
