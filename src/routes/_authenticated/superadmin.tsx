@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Eye, Trash2, Shield, ShieldOff, Images, Play, Search } from "lucide-react";
+import { Eye, Trash2, Shield, ShieldOff, Images, Play, Search, Download } from "lucide-react";
 import { toast } from "sonner";
 import { formatBRL } from "@/lib/categories";
 import {
@@ -252,6 +252,28 @@ function StatCard({ label, value, highlight }: { label: string; value: string | 
   );
 }
 
+async function downloadFromUrl(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("falha ao baixar");
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  } catch (e: any) {
+    toast.error(e?.message ?? "Falha ao baixar");
+  }
+}
+
+function safeName(s: string) {
+  return s.replace(/[^\w\-]+/g, "_").slice(0, 60) || "arquivo";
+}
+
 function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: string; creatorName: string; onClose: () => void }) {
   const getContent = useServerFn(getCreatorContentAdmin);
   const { data, isLoading } = useQuery({
@@ -302,7 +324,17 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{v.description || "—"}</p>
                       <p className="text-xs text-muted-foreground mt-1">{v.is_free ? "Gratuito" : formatBRL(Number(v.price_brl))}</p>
                       {v.signed_url && (
-                        <video src={v.signed_url} controls className="mt-3 w-full max-w-xl rounded" />
+                        <>
+                          <video src={v.signed_url} controls className="mt-3 w-full max-w-xl rounded" />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => downloadFromUrl(v.signed_url, `${safeName(v.title)}.mp4`)}
+                          >
+                            <Download className="w-4 h-4 mr-1" /> Baixar vídeo
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -324,12 +356,20 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
                     </div>
                     {p.description && <p className="text-sm text-muted-foreground mb-3">{p.description}</p>}
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                      {photos.map((ph: any) => (
-                        <div key={ph.id} className={`relative aspect-square rounded overflow-hidden border ${ph.is_cover ? "border-primary" : "border-border"}`}>
+                      {photos.map((ph: any, i: number) => (
+                        <div key={ph.id} className={`relative aspect-square rounded overflow-hidden border group ${ph.is_cover ? "border-primary" : "border-border"}`}>
                           <img src={ph.photo_url} alt="" className="w-full h-full object-cover" />
                           {ph.is_cover && (
                             <span className="absolute bottom-1 left-1 right-1 text-[9px] font-bold py-0.5 rounded bg-primary text-primary-foreground text-center">CAPA</span>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => downloadFromUrl(ph.photo_url, `${safeName(p.title)}_${i + 1}.jpg`)}
+                            className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition"
+                            aria-label="Baixar foto"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -343,9 +383,17 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
                 <p className="text-sm text-muted-foreground">Sem fotos grátis.</p>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                  {freePhotos.map((ph: any) => (
-                    <div key={ph.id} className="aspect-square rounded overflow-hidden border border-border">
+                  {freePhotos.map((ph: any, i: number) => (
+                    <div key={ph.id} className="relative aspect-square rounded overflow-hidden border border-border group">
                       <img src={ph.photo_url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => downloadFromUrl(ph.photo_url, `${safeName(creatorName)}_foto_${i + 1}.jpg`)}
+                        className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition"
+                        aria-label="Baixar foto"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
