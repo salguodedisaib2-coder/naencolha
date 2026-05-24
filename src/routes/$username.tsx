@@ -152,7 +152,7 @@ function ProfilePage() {
     }
     const nome = profile.full_name || profile.username;
     const preco = formatBRL(Number(video.price_brl));
-    const tipo = video.content_type === "photo_pack" ? "o pack de fotos" : "o vídeo";
+    const tipo = video.content_type === "photo_pack" ? "o pack de fotos" : video.content_type === "video_pack" ? "o pack de vídeos" : "o vídeo";
     const msg = `Oi ${nome}, gostaria de comprar via Pix ${tipo} "${video.title}" no valor de ${preco}.`;
     const finalUrl = `${url}${url.includes("?") ? "&" : "?"}text=${encodeURIComponent(msg)}`;
     window.open(finalUrl, "_blank", "noopener,noreferrer");
