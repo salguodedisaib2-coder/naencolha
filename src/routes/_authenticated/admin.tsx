@@ -28,6 +28,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ServiceChip } from "@/components/ServiceChip";
 import { CATEGORY_LABELS, CATEGORY_ORDER, formatBRL, type ServiceCategory } from "@/lib/categories";
 import { createVoucher, revokeVoucher, listVouchersForVideo, listAllVouchers, getVoucherStats, setVideoFeatured } from "@/lib/vouchers.functions";
+import { ensureH264 } from "@/lib/transcode-h265";
 import { toast } from "sonner";
 import { Trash2, Upload, Ticket, Copy, MessageCircle, Flame, TrendingUp } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -581,14 +582,30 @@ function VideosTab({ userId }: { userId: string }) {
     setUploading(true);
     try {
       if (kind === "video") {
+        let workingFile = file;
+        try {
+          const converted = await ensureH264(file, (r) => {
+            // progress 0..1 during transcode
+            if (r > 0 && r < 1) toast.loading(`Convertendo H.265 → H.264: ${Math.round(r * 100)}%`, { id: "h264" });
+          });
+          if (converted !== file) {
+            toast.success("Vídeo convertido para H.264", { id: "h264" });
+            workingFile = converted;
+          } else {
+            toast.dismiss("h264");
+          }
+        } catch (err) {
+          console.warn("Falha na conversão H.264, enviando original:", err);
+          toast.dismiss("h264");
+        }
         const [url, dur] = await Promise.all([
-          uploadFile("videos", userId, file),
-          readVideoDuration(file),
+          uploadFile("videos", userId, workingFile),
+          readVideoDuration(workingFile),
         ]);
         let thumbUrl = "";
         if (!thumbManual) {
           try {
-            const blob = await generateThumbnail(file);
+            const blob = await generateThumbnail(workingFile);
             const thumbFile = new File([blob], `auto-${Date.now()}.jpg`, { type: "image/jpeg" });
             thumbUrl = await uploadFile("thumbnails", userId, thumbFile);
           } catch (err) {
