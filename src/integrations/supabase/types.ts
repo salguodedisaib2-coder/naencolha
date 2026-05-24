@@ -133,6 +133,30 @@ export type Database = {
         }
         Relationships: []
       }
+      page_views: {
+        Row: {
+          id: string
+          profile_id: string
+          user_agent: string | null
+          viewed_at: string
+          viewer_ip: string | null
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          user_agent?: string | null
+          viewed_at?: string
+          viewer_ip?: string | null
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          user_agent?: string | null
+          viewed_at?: string
+          viewer_ip?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
