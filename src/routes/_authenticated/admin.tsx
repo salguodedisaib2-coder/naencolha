@@ -57,10 +57,21 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 function AdminPage() {
+  const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-  }, []);
+    supabase.auth.getUser().then(async ({ data }) => {
+      const uid = data.user?.id ?? null;
+      if (uid) {
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+        if ((roles ?? []).some((r: any) => r.role === "super_admin")) {
+          navigate({ to: "/superadmin" });
+          return;
+        }
+      }
+      setUserId(uid);
+    });
+  }, [navigate]);
 
   if (!userId) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
 
