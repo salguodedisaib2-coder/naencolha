@@ -124,6 +124,51 @@ function LoginPage() {
                 required
               />
             </div>
+            {mode === "signup" && (
+              <div className="space-y-3 pt-2">
+                <div className="rounded-lg border-l-4 border-destructive bg-destructive/10 p-4">
+                  <h3 className="font-bold text-destructive text-sm mb-2">Área 18+</h3>
+                  <p className="text-xs text-foreground mb-2">
+                    <span className="font-semibold">ECA Digital.</span> Em conformidade com o Estatuto da Criança e do Adolescente Digital, somente após confirmar sua maioridade você poderá acessar áreas restritas do site.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    A verificação de idade é feita de forma declaratória neste momento. A plataforma pode solicitar documento de identidade para validação adicional.
+                  </p>
+                </div>
+
+                <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={confirmAge}
+                    onChange={(e) => setConfirmAge(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-primary"
+                  />
+                  <span>Declaro ser <strong>maior de 18 anos</strong> e estar ciente de que esta plataforma contém conteúdo adulto.</span>
+                </label>
+
+                <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={acceptPrivacy}
+                    onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-primary"
+                  />
+                  <span>Aceito a <a href="/privacidade" target="_blank" className="text-primary underline">Política de Privacidade</a>.</span>
+                </label>
+
+                <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={acceptResponsibility}
+                    onChange={(e) => setAcceptResponsibility(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-primary"
+                  />
+                  <span>
+                    Declaro, sob minha própria responsabilidade, que os conteúdos publicados por este usuário serão de maneira pessoal e voluntária, que toda a informação, incluindo a de contato, será relativa à <strong>minha pessoa</strong> e que atuo como <strong>acompanhante independente</strong>, sem mediar nenhum tipo de coerção ou violência. Entendo que em caso de detectar um não cumprimento do anterior os anúncios serão desativados e as autoridades competentes serão avisadas.
+                  </span>
+                </label>
+              </div>
+            )}
             <Button type="submit" className="w-full bg-gradient-primary" disabled={loading}>
               {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta"}
             </Button>
