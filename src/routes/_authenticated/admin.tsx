@@ -820,9 +820,12 @@ function VideosTab({ userId }: { userId: string }) {
 
           <div>
             <Label className="mb-2 block">Tipo de conteúdo</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button type="button" variant={contentType === "video" ? "default" : "outline"} size="sm" onClick={() => setContentType("video")}>
-                Vídeo
+                Vídeo unitário
+              </Button>
+              <Button type="button" variant={contentType === "video_pack" ? "default" : "outline"} size="sm" onClick={() => setContentType("video_pack")}>
+                Pack de vídeos
               </Button>
               <Button type="button" variant={contentType === "photo_pack" ? "default" : "outline"} size="sm" onClick={() => setContentType("photo_pack")}>
                 Pack de fotos
@@ -830,7 +833,7 @@ function VideosTab({ userId }: { userId: string }) {
             </div>
           </div>
 
-          {contentType === "video" ? (
+          {contentType === "video" && (
             <>
               <div>
                 <Label>Arquivo de vídeo</Label>
@@ -852,7 +855,48 @@ function VideosTab({ userId }: { userId: string }) {
                 )}
               </div>
             </>
-          ) : (
+          )}
+
+          {contentType === "video_pack" && (
+            <>
+              <div>
+                <Label>Vídeos do pack (envie 2 ou mais)</Label>
+                <Input type="file" accept="video/*" multiple onChange={(e) => e.target.files && handlePackVideos(e.target.files)} />
+                <p className="text-xs text-muted-foreground mt-1">
+                  H.265 é convertido automaticamente para H.264. A capa do pack é gerada do primeiro vídeo (ou envie uma abaixo).
+                </p>
+                {packVideos.length > 0 && (
+                  <div className="grid gap-2 mt-3">
+                    {packVideos.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 px-3 py-2 border border-border rounded-lg text-sm">
+                        <span className="truncate flex-1">{i + 1}. {p.name}</span>
+                        <button
+                          type="button"
+                          aria-label="Remover"
+                          onClick={() => setPackVideos((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="p-1 rounded-full bg-destructive text-destructive-foreground"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label>Capa do pack (opcional — gerada do primeiro vídeo se vazia)</Label>
+                <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile("thumb", e.target.files[0])} />
+                {form.thumbnail_url && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <img src={form.thumbnail_url} alt="capa" className="w-24 h-16 object-cover rounded" />
+                    <p className="text-xs text-primary">✓ {thumbManual ? "Enviada" : "Gerada automaticamente"}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {contentType === "photo_pack" && (
             <div>
               <Label>Fotos do pack (envie 1 ou mais — pode ser pack de 10)</Label>
               <Input type="file" accept="image/*" multiple onChange={(e) => e.target.files && handlePackPhotos(e.target.files)} />
