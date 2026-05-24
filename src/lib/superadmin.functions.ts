@@ -37,25 +37,30 @@ export const listAllCreatorsAdmin = createServerFn({ method: "GET" })
     const ids = (profiles ?? []).map((p) => p.id);
     if (ids.length === 0) return { creators: [] };
 
-    const [viewsRes, videosRes, packsRes, freePhotosRes] = await Promise.all([
+    const [viewsRes, videosRes, packsRes, freePhotosRes, packVideosRes] = await Promise.all([
       supabaseAdmin.from("page_views").select("profile_id").in("profile_id", ids),
       supabaseAdmin.from("videos").select("creator_id, content_type").in("creator_id", ids),
       supabaseAdmin.from("pack_photos").select("creator_id").in("creator_id", ids),
       supabaseAdmin.from("free_photos").select("creator_id").in("creator_id", ids),
+      supabaseAdmin.from("pack_videos").select("creator_id").in("creator_id", ids),
     ]);
 
     const views: Record<string, number> = {};
     for (const r of viewsRes.data ?? []) views[r.profile_id] = (views[r.profile_id] ?? 0) + 1;
     const videoCount: Record<string, number> = {};
     const packCount: Record<string, number> = {};
+    const videoPackCount: Record<string, number> = {};
     for (const r of videosRes.data ?? []) {
       if (r.content_type === "photo_pack") packCount[r.creator_id] = (packCount[r.creator_id] ?? 0) + 1;
+      else if (r.content_type === "video_pack") videoPackCount[r.creator_id] = (videoPackCount[r.creator_id] ?? 0) + 1;
       else videoCount[r.creator_id] = (videoCount[r.creator_id] ?? 0) + 1;
     }
     const photoCount: Record<string, number> = {};
     for (const r of packsRes.data ?? []) photoCount[r.creator_id] = (photoCount[r.creator_id] ?? 0) + 1;
     const freePhotoCount: Record<string, number> = {};
     for (const r of freePhotosRes.data ?? []) freePhotoCount[r.creator_id] = (freePhotoCount[r.creator_id] ?? 0) + 1;
+    const packVideoFileCount: Record<string, number> = {};
+    for (const r of packVideosRes.data ?? []) packVideoFileCount[r.creator_id] = (packVideoFileCount[r.creator_id] ?? 0) + 1;
 
     return {
       creators: (profiles ?? []).map((p) => ({
@@ -63,7 +68,9 @@ export const listAllCreatorsAdmin = createServerFn({ method: "GET" })
         views: views[p.id] ?? 0,
         video_count: videoCount[p.id] ?? 0,
         pack_count: packCount[p.id] ?? 0,
+        video_pack_count: videoPackCount[p.id] ?? 0,
         pack_photo_count: photoCount[p.id] ?? 0,
+        pack_video_count: packVideoFileCount[p.id] ?? 0,
         free_photo_count: freePhotoCount[p.id] ?? 0,
       })),
     };
