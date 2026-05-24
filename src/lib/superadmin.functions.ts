@@ -186,6 +186,7 @@ export const deleteCreatorAdmin = createServerFn({ method: "POST" })
     await supabaseAdmin.from("video_vouchers").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("purchases").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("pack_photos").delete().eq("creator_id", creatorId);
+    await supabaseAdmin.from("pack_videos").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("videos").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("free_photos").delete().eq("creator_id", creatorId);
     await supabaseAdmin.from("creator_services").delete().eq("creator_id", creatorId);
