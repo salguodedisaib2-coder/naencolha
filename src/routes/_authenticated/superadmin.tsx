@@ -32,7 +32,10 @@ import {
   getCreatorContentAdmin,
   setCreatorActive,
   deleteCreatorAdmin,
+  createVideoUploadUrlAdmin,
+  finalizeVideoReplaceAdmin,
 } from "@/lib/superadmin.functions";
+import { ensureH264 } from "@/lib/transcode-h265";
 
 export const Route = createFileRoute("/_authenticated/superadmin")({
   head: () => ({ meta: [{ title: "Super Admin — NaEncolha" }] }),
