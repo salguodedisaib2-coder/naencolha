@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { ServiceChip } from "@/components/ServiceChip";
 import { Logo } from "@/components/Logo";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/categories";
 import { MessageCircle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { recordPageView } from "@/lib/superadmin.functions";
 
 export const Route = createFileRoute("/$username")({
   component: ProfilePage,
@@ -35,6 +37,7 @@ function ProfilePage() {
   const { username } = Route.useParams();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [videoPage, setVideoPage] = useState(0);
+  const trackView = useServerFn(recordPageView);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["creator", username],
@@ -96,6 +99,12 @@ function ProfilePage() {
     map.forEach((arr) => arr.sort((a, b) => a.sort_order - b.sort_order));
     return map;
   }, [data]);
+
+  const profileId = data?.profile?.id;
+  useEffect(() => {
+    if (!profileId) return;
+    trackView({ data: { profileId } }).catch(() => {});
+  }, [profileId, trackView]);
 
   if (isLoading) {
     return (

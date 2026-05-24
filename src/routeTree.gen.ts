@@ -19,6 +19,7 @@ import { Route as VoucherCodeRouteImport } from './routes/voucher.$code'
 import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as UsernameConteudosRouteImport } from './routes/$username.conteudos'
+import { Route as ApiPublicSetupSuperadminRouteImport } from './routes/api/public/setup-superadmin'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -69,6 +70,12 @@ const UsernameConteudosRoute = UsernameConteudosRouteImport.update({
   path: '/conteudos',
   getParentRoute: () => UsernameRoute,
 } as any)
+const ApiPublicSetupSuperadminRoute =
+  ApiPublicSetupSuperadminRouteImport.update({
+    id: '/api/public/setup-superadmin',
+    path: '/api/public/setup-superadmin',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/superadmin': typeof AuthenticatedSuperadminRoute
   '/voucher/$code': typeof VoucherCodeRoute
   '/voucher/': typeof VoucherIndexRoute
+  '/api/public/setup-superadmin': typeof ApiPublicSetupSuperadminRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,6 +99,7 @@ export interface FileRoutesByTo {
   '/superadmin': typeof AuthenticatedSuperadminRoute
   '/voucher/$code': typeof VoucherCodeRoute
   '/voucher': typeof VoucherIndexRoute
+  '/api/public/setup-superadmin': typeof ApiPublicSetupSuperadminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,6 +113,7 @@ export interface FileRoutesById {
   '/_authenticated/superadmin': typeof AuthenticatedSuperadminRoute
   '/voucher/$code': typeof VoucherCodeRoute
   '/voucher/': typeof VoucherIndexRoute
+  '/api/public/setup-superadmin': typeof ApiPublicSetupSuperadminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/superadmin'
     | '/voucher/$code'
     | '/voucher/'
+    | '/api/public/setup-superadmin'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/superadmin'
     | '/voucher/$code'
     | '/voucher'
+    | '/api/public/setup-superadmin'
   id:
     | '__root__'
     | '/'
@@ -140,6 +152,7 @@ export interface FileRouteTypes {
     | '/_authenticated/superadmin'
     | '/voucher/$code'
     | '/voucher/'
+    | '/api/public/setup-superadmin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -150,6 +163,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   VoucherCodeRoute: typeof VoucherCodeRoute
   VoucherIndexRoute: typeof VoucherIndexRoute
+  ApiPublicSetupSuperadminRoute: typeof ApiPublicSetupSuperadminRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -224,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameConteudosRouteImport
       parentRoute: typeof UsernameRoute
     }
+    '/api/public/setup-superadmin': {
+      id: '/api/public/setup-superadmin'
+      path: '/api/public/setup-superadmin'
+      fullPath: '/api/public/setup-superadmin'
+      preLoaderRoute: typeof ApiPublicSetupSuperadminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -261,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   VoucherCodeRoute: VoucherCodeRoute,
   VoucherIndexRoute: VoucherIndexRoute,
+  ApiPublicSetupSuperadminRoute: ApiPublicSetupSuperadminRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
