@@ -703,6 +703,28 @@ function VideosTab({ userId }: { userId: string }) {
         const { error: phErr } = await supabase.from("pack_photos").insert(rows);
         if (phErr) throw phErr;
         toast.success("Pack de fotos cadastrado");
+      } else if (contentType === "video_pack") {
+        if (packVideos.length === 0) { toast.error("Envie ao menos 1 vídeo"); return; }
+        const { data: inserted, error } = await supabase.from("videos").insert({
+          creator_id: userId,
+          title: form.title,
+          description: form.description,
+          price_brl: form.is_free ? 0 : Number(form.price),
+          video_url: null,
+          thumbnail_url: form.thumbnail_url || null,
+          is_free: form.is_free,
+          content_type: "video_pack",
+        }).select("id").single();
+        if (error) throw error;
+        const rows = packVideos.map((p, i) => ({
+          video_id: inserted.id,
+          creator_id: userId,
+          video_url: p.url,
+          order_index: i,
+        }));
+        const { error: pvErr } = await supabase.from("pack_videos").insert(rows);
+        if (pvErr) throw pvErr;
+        toast.success("Pack de vídeos cadastrado");
       } else {
         const { error } = await supabase.from("videos").insert({
           creator_id: userId,
@@ -731,6 +753,7 @@ function VideosTab({ userId }: { userId: string }) {
   const del = async (id: string) => {
     if (!confirm("Excluir conteúdo?")) return;
     await supabase.from("pack_photos").delete().eq("video_id", id);
+    await supabase.from("pack_videos").delete().eq("video_id", id);
     await supabase.from("videos").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["my-videos"] });
   };
