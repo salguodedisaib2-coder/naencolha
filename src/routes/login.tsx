@@ -19,6 +19,9 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+  const [acceptResponsibility, setAcceptResponsibility] = useState(false);
+  const [confirmAge, setConfirmAge] = useState(false);
 
   const routeByRole = async (userId: string) => {
     const { data } = await supabase
