@@ -313,7 +313,8 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
           <Tabs defaultValue="videos">
             <TabsList>
               <TabsTrigger value="videos"><Play className="w-3.5 h-3.5 mr-1" /> Vídeos ({videos.length})</TabsTrigger>
-              <TabsTrigger value="packs"><Images className="w-3.5 h-3.5 mr-1" /> Packs ({packs.length})</TabsTrigger>
+              <TabsTrigger value="packs"><Images className="w-3.5 h-3.5 mr-1" /> Packs foto ({packs.length})</TabsTrigger>
+              <TabsTrigger value="video-packs"><Play className="w-3.5 h-3.5 mr-1" /> Packs vídeo ({videoPacks.length})</TabsTrigger>
               <TabsTrigger value="free">Fotos grátis ({freePhotos.length})</TabsTrigger>
             </TabsList>
 
