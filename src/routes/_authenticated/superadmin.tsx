@@ -356,12 +356,20 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
                     </div>
                     {p.description && <p className="text-sm text-muted-foreground mb-3">{p.description}</p>}
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                      {photos.map((ph: any) => (
-                        <div key={ph.id} className={`relative aspect-square rounded overflow-hidden border ${ph.is_cover ? "border-primary" : "border-border"}`}>
+                      {photos.map((ph: any, i: number) => (
+                        <div key={ph.id} className={`relative aspect-square rounded overflow-hidden border group ${ph.is_cover ? "border-primary" : "border-border"}`}>
                           <img src={ph.photo_url} alt="" className="w-full h-full object-cover" />
                           {ph.is_cover && (
                             <span className="absolute bottom-1 left-1 right-1 text-[9px] font-bold py-0.5 rounded bg-primary text-primary-foreground text-center">CAPA</span>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => downloadFromUrl(ph.photo_url, `${safeName(p.title)}_${i + 1}.jpg`)}
+                            className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition"
+                            aria-label="Baixar foto"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -375,9 +383,17 @@ function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: s
                 <p className="text-sm text-muted-foreground">Sem fotos grátis.</p>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                  {freePhotos.map((ph: any) => (
-                    <div key={ph.id} className="aspect-square rounded overflow-hidden border border-border">
+                  {freePhotos.map((ph: any, i: number) => (
+                    <div key={ph.id} className="relative aspect-square rounded overflow-hidden border border-border group">
                       <img src={ph.photo_url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => downloadFromUrl(ph.photo_url, `${safeName(creatorName)}_foto_${i + 1}.jpg`)}
+                        className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition"
+                        aria-label="Baixar foto"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
