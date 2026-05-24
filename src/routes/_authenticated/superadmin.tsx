@@ -252,6 +252,28 @@ function StatCard({ label, value, highlight }: { label: string; value: string | 
   );
 }
 
+async function downloadFromUrl(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("falha ao baixar");
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  } catch (e: any) {
+    toast.error(e?.message ?? "Falha ao baixar");
+  }
+}
+
+function safeName(s: string) {
+  return s.replace(/[^\w\-]+/g, "_").slice(0, 60) || "arquivo";
+}
+
 function ContentReviewDialog({ creatorId, creatorName, onClose }: { creatorId: string; creatorName: string; onClose: () => void }) {
   const getContent = useServerFn(getCreatorContentAdmin);
   const { data, isLoading } = useQuery({
