@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatBRL } from "@/lib/categories";
-import { Play, Ticket, Images } from "lucide-react";
+import { Play, Ticket, Images, Film } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getFreeVideoUrl } from "@/lib/videos.functions";
 
