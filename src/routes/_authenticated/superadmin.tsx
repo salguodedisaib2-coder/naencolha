@@ -127,11 +127,28 @@ function SuperAdminContent() {
     }
   };
 
+  const inviteUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/login?signup=1` : "/login?signup=1";
+
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      toast.success("Link de convite copiado!", { description: inviteUrl });
+    } catch {
+      toast.error("Não foi possível copiar. Copie manualmente: " + inviteUrl);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-2 mb-6">
-        <Shield className="w-7 h-7 text-primary" />
-        <h1 className="text-3xl font-bold">Super Admin</h1>
+      <div className="flex items-center justify-between gap-2 mb-6 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Shield className="w-7 h-7 text-primary" />
+          <h1 className="text-3xl font-bold">Super Admin</h1>
+        </div>
+        <Button onClick={copyInvite} className="gap-2">
+          <Link2 className="w-4 h-4" /> Gerar link de convite
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
