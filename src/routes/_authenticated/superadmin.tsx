@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Eye, Trash2, Shield, ShieldOff, Images, Play, Search, Download } from "lucide-react";
+import { Eye, Trash2, Shield, ShieldOff, Images, Play, Search, Download, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatBRL } from "@/lib/categories";
 import {
