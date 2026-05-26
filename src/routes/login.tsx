@@ -9,12 +9,16 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Entrar — NaEncolha" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    signup: search.signup === "1" || search.signup === 1 || search.signup === true ? true : false,
+  }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const { signup: signupParam } = Route.useSearch();
+  const [mode, setMode] = useState<"login" | "signup">(signupParam ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
